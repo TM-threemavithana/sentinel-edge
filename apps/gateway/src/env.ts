@@ -3,7 +3,7 @@ import type { AnalysisMessage } from "./types";
 export interface Env {
   DB: D1Database;
   POLICY_CACHE: KVNamespace;
-
+  ARTIFACTS: R2Bucket;
   EDGE_COORDINATOR: DurableObjectNamespace;
   AI: Ai;
   ENVIRONMENT: string;
