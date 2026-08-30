@@ -83,10 +83,26 @@ export function OverviewDashboard() {
 
   useEffect(() => {
     void refresh();
-    const interval = window.setInterval(() => {
-      apiFetch<{ requestsPerMinute: number; activeSessions: number }>("/v1/analytics/live").then(setLive).catch(() => undefined);
-    }, 10_000);
-    return () => window.clearInterval(interval);
+    
+    // Server-Sent Events (SSE) connection for live analytics
+    // Use getGatewayOrigin() from api if exported, or construct the URL manually if not.
+    // Wait, the API url is /v1/analytics/live/stream
+    // Since we need to send the CSRF token and credentials, we can just use EventSource with withCredentials.
+    // However, we need the full URL. Let's just assume NEXT_PUBLIC_GATEWAY_ORIGIN is used or fallback to localhost.
+    const origin = process.env.NEXT_PUBLIC_GATEWAY_ORIGIN || "http://127.0.0.1:8787";
+    const source = new EventSource(`${origin}/v1/analytics/live/stream`, { withCredentials: true });
+    
+    source.onmessage = (event) => {
+      try {
+        const snapshot = JSON.parse(event.data);
+        setLive({
+          requestsPerMinute: snapshot.live?.requests || 0,
+          activeSessions: snapshot.activeUsers || 0
+        });
+      } catch {}
+    };
+    
+    return () => source.close();
   }, []);
 
   const chartPoints = useMemo(() => data.series.map((point) => ({

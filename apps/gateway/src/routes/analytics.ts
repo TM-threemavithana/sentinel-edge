@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { AppBindings } from "../helpers";
 import { coordinator, requireSession } from "../helpers";
+import { streamSSE } from "hono/streaming";
 
 const analytics = new Hono<AppBindings>();
 
@@ -67,3 +68,28 @@ analytics.get("/audit", requireSession(["admin"]), async (c) => {
 });
 
 export { analytics };
+
+analytics.get("/live/stream", requireSession(), (c) => {
+  return streamSSE(c, async (stream) => {
+    const user = c.get("user");
+    let active = true;
+    
+    // Cloudflare Workers might interrupt long-running streams, so clients should auto-reconnect.
+    // The EventSource object in the browser handles this gracefully.
+    c.req.raw.signal.addEventListener("abort", () => { active = false; });
+    
+    while (active) {
+      try {
+        const res = await coordinator(c.env, user.workspaceId).fetch("https://coordinator/snapshot");
+        const data = await res.json();
+        await stream.writeSSE({
+          data: JSON.stringify(data),
+          event: "message",
+        });
+        await stream.sleep(3000);
+      } catch (err) {
+        active = false;
+      }
+    }
+  });
+});

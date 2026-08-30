@@ -84,12 +84,9 @@ export default {
   fetch: app.fetch,
   scheduled: async (event: any, env: any, ctx: any) => {
     ctx.waitUntil((async () => {
-      const expired = await env.DB.prepare("SELECT object_key FROM artifact_metadata WHERE expires_at < datetime('now') LIMIT 500").all();
-      if (!expired.results || expired.results.length === 0) return;
-      const keys = expired.results.map((r: any) => r.object_key);
-      await env.ARTIFACTS.delete(keys);
-      const marks = keys.map(() => "?").join(",");
-      await env.DB.prepare(`DELETE FROM artifact_metadata WHERE object_key IN (${marks})`).bind(...keys).run();
+      // NOTE: R2 Object Lifecycles handle the physical deletion of expired artifacts.
+      // This cron only cleans up the relational metadata in D1.
+      await env.DB.prepare("DELETE FROM artifact_metadata WHERE expires_at < datetime('now')").run();
     })());
   }
 };
