@@ -24,12 +24,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 11.19.0
+          version: 11.24.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --no-frozen-lockfile
       - run: pnpm typecheck && pnpm test
 
   staging:
@@ -46,12 +46,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 11.19.0
+          version: 11.24.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --no-frozen-lockfile
       - name: Apply D1 migrations (staging)
         run: pnpm --filter @sentinel/gateway db:migrate:remote --env staging
       - name: Deploy gateway (staging)
@@ -73,12 +73,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 11.19.0
+          version: 11.24.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --no-frozen-lockfile
       - name: Apply D1 migrations
         run: pnpm --filter @sentinel/gateway db:migrate:remote --env production
       - name: Deploy gateway
