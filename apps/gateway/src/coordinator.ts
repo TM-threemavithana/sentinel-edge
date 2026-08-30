@@ -51,11 +51,11 @@ export class EdgeCoordinator {
   }
 
   private async increment(request: Request): Promise<Response> {
-    const input = (await request.json()) as { blocked: boolean; bytes: number };
+    const input = (await request.json()) as { decision: string; bytes?: number };
     const live = (await this.state.storage.get<CounterState>("live")) ?? { requests: 0, blocked: 0, bytes: 0 };
     live.requests++;
-    if (input.blocked) live.blocked++;
-    live.bytes += input.bytes;
+    if (input.decision === "blocked" || input.decision === "rate_limited") live.blocked++;
+    live.bytes += input.bytes ?? 0;
     await this.state.storage.put("live", live);
     return Response.json({ status: "ok" });
   }

@@ -3,7 +3,7 @@ name: Deploy to Cloudflare
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - "apps/**"
       - "packages/**"
@@ -13,11 +13,54 @@ permissions:
   contents: read
 
 concurrency:
-  group: production-deploy
+  group: deploy-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck && pnpm test
+
+  staging:
+    needs: validate
+    if: github.ref_name == 'develop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply D1 migrations (staging)
+        run: pnpm --filter @sentinel/gateway db:migrate:remote
+      - name: Deploy gateway (staging)
+        run: pnpm --filter @sentinel/gateway run deploy
+      - name: Deploy console (staging)
+        run: pnpm --filter @sentinel/web run deploy
+
+  production:
+    needs: validate
+    if: github.ref_name == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: production
@@ -26,15 +69,14 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@v4
         with:
           version: 11.19.0
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck && pnpm test
       - name: Apply D1 migrations
         run: pnpm --filter @sentinel/gateway db:migrate:remote
       - name: Deploy gateway
