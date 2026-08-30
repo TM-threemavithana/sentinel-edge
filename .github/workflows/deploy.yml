@@ -39,6 +39,7 @@ jobs:
     timeout-minutes: 25
     environment: staging
     env:
+      NEXT_PUBLIC_GATEWAY_ORIGIN: "https://sentinel-edge-gateway-staging.tharukamaduwantha62.workers.dev"
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
@@ -65,6 +66,7 @@ jobs:
     timeout-minutes: 25
     environment: production
     env:
+      NEXT_PUBLIC_GATEWAY_ORIGIN: "https://sentinel-edge-gateway.tharukamaduwantha62.workers.dev"
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
