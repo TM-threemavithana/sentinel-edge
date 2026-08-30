@@ -38,6 +38,6 @@ jobs:
       - name: Apply D1 migrations
         run: pnpm --filter @sentinel/gateway db:migrate:remote
       - name: Deploy gateway
-        run: pnpm --filter @sentinel/gateway deploy
+        run: pnpm --filter @sentinel/gateway run deploy
       - name: Deploy console
-        run: pnpm --filter @sentinel/web deploy
+        run: pnpm --filter @sentinel/web run deploy
