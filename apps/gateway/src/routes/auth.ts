@@ -13,7 +13,8 @@ const auth = new Hono<AppBindings>();
 auth.post("/login", async (c) => {
   const parsed = loginSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return errorResponse("invalid_credentials", "Email or password is invalid", 401);
-  const rateKey = await hmacSha256(c.env.SESSION_SECRET, `${parsed.data.email}:${c.req.header("cf-connecting-ip") ?? "local"}`);
+  const email = parsed.data.email.toLowerCase();
+  const rateKey = await hmacSha256(c.env.SESSION_SECRET, `${email}:${c.req.header("cf-connecting-ip") ?? "local"}`);
   const rateResponse = await coordinator(c.env, "auth").fetch("https://coordinator/rate-limit", {
     method: "POST", body: JSON.stringify({ key: rateKey, limit: 8, windowSeconds: 300 }),
   });
@@ -24,7 +25,7 @@ auth.post("/login", async (c) => {
        FROM users u JOIN memberships m ON m.user_id = u.id JOIN workspaces w ON w.id = m.workspace_id
       WHERE u.email = ? COLLATE NOCASE AND u.status = 'active' AND u.auth_provider = 'local'
       ORDER BY m.created_at ASC LIMIT 1`,
-  ).bind(parsed.data.email).first<{
+  ).bind(email).first<{
     id: string; email: string; display_name: string; password_hash: string | null;
     workspace_id: string; workspace_name: string; role: Role;
   }>();
@@ -62,7 +63,9 @@ auth.get("/me", requireSession(), async (c) => {
       method: "POST", body: JSON.stringify({ sessionId: user.sessionId, userId: user.id }),
     }).then(() => undefined),
   );
-  return c.json({ user });
+  const csrf = generateCsrfCookie(c.env.ENVIRONMENT === "development");
+  c.res.headers.append("set-cookie", csrf.cookie);
+  return c.json({ user, csrfToken: csrf.token });
 });
 
 export { auth };

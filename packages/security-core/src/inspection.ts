@@ -51,9 +51,10 @@ const PATTERNS: ReadonlyArray<{
 ];
 
 function sourceText(context: RequestContext): string {
+  const queryVals = Object.values(context.query).flatMap(v => Array.isArray(v) ? v : [v]).join("\n");
   return [
     context.path,
-    new URLSearchParams(context.query).toString(),
+    queryVals,
     context.bodyText.slice(0, 128_000),
   ].join("\n");
 }

@@ -3,10 +3,12 @@
   "name": "sentinel-edge-gateway",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-20",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "workers_dev": true,
   "vars": {
-    "ENVIRONMENT": "development",
+    "ENVIRONMENT": "production",
     "AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fast",
     "AI_MODE": "async",
     "SESSION_COOKIE": "sentinel_session",
@@ -32,7 +34,6 @@
   "ai": {
     "binding": "AI"
   },
-
   "durable_objects": {
     "bindings": [
       {
@@ -44,11 +45,57 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["EdgeCoordinator"]
+      "new_sqlite_classes": [
+        "EdgeCoordinator"
+      ]
     }
   ],
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1
+  },
+  "r2_buckets": [
+    {
+      "binding": "ARTIFACTS",
+      "bucket_name": "sentinel-artifacts"
+    }
+  ],
+  "env": {
+    "staging": {
+      "name": "sentinel-edge-gateway-staging",
+      "vars": {
+        "ENVIRONMENT": "staging",
+        "AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fast",
+        "AI_MODE": "async",
+        "SESSION_COOKIE": "sentinel_session_staging",
+        "SESSION_TTL_SECONDS": "28800",
+        "MAX_INSPECTION_BYTES": "1048576",
+        "FREE_TIER_MODE": "true",
+        "ALLOWED_ORIGINS": "https://sentinel-edge-console-staging.tharukamaduwantha62.workers.dev"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "sentinel-edge-db-staging",
+          "database_id": "STAGING_DB_ID_PLACEHOLDER",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "POLICY_CACHE",
+          "id": "STAGING_KV_ID_PLACEHOLDER"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "ARTIFACTS",
+          "bucket_name": "sentinel-artifacts-staging"
+        }
+      ],
+      "ai": {
+        "binding": "AI"
+      }
+    }
   }
 }

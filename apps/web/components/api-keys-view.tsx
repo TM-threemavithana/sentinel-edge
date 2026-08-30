@@ -32,7 +32,7 @@ export function ApiKeysView() {
   async function load() {
     try {
       const { data } = await apiFetch<{ data: ApiKeyRecord[] }>("/v1/api-keys");
-      if (data.length > 0) setKeys(data);
+      setKeys(data);
     } catch {
       // The portfolio preview remains useful before the local gateway is started.
     }

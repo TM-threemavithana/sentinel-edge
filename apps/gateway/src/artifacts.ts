@@ -1,4 +1,4 @@
-import { redactHeaders, redactText } from "@sentinel/security-core";
+import { redactHeaders, redactBody } from "@sentinel/security-core";
 import type { Env } from "./env";
 import { sha256 } from "./crypto";
 
@@ -12,6 +12,7 @@ export async function storeRequestArtifact(
     path: string;
     headers: Record<string, string>;
     body: string;
+    retentionDays?: number;
   },
 ): Promise<string> {
   if (env.FREE_TIER_MODE === "true") return "";
@@ -23,7 +24,7 @@ export async function storeRequestArtifact(
       method: input.method,
       path: input.path,
       headers: redactHeaders(input.headers),
-      body: redactText(input.body),
+      body: redactBody(input.body, input.headers["content-type"] || ""),
     },
     null,
     2,
@@ -38,7 +39,7 @@ export async function storeRequestArtifact(
     env.DB.prepare(
       `INSERT INTO artifact_metadata
         (id, workspace_id, object_key, kind, content_type, size_bytes, sha256, request_event_id, expires_at)
-       VALUES (?, ?, ?, 'request_sample', 'application/json', ?, ?, ?, datetime('now', '+30 days'))`,
+       VALUES (?, ?, ?, 'request_sample', 'application/json', ?, ?, ?, datetime('now', '+${input.retentionDays || 30} days'))`,
     ).bind(crypto.randomUUID(), input.workspaceId, key, bytes.byteLength, checksum, input.requestEventId),
     env.DB.prepare("UPDATE request_events SET artifact_key = ? WHERE id = ?").bind(key, input.requestEventId),
   ]);
@@ -52,6 +53,7 @@ export async function storeAnalysisReport(
     requestEventId: string;
     requestId: string;
     report: unknown;
+    retentionDays?: number;
   },
 ): Promise<string> {
   if (env.FREE_TIER_MODE === "true") return "";
@@ -65,7 +67,7 @@ export async function storeAnalysisReport(
   await env.DB.prepare(
     `INSERT INTO artifact_metadata
       (id, workspace_id, object_key, kind, content_type, size_bytes, sha256, request_event_id, expires_at)
-     VALUES (?, ?, ?, 'analysis_report', 'application/json', ?, ?, ?, datetime('now', '+30 days'))`,
+     VALUES (?, ?, ?, 'analysis_report', 'application/json', ?, ?, ?, datetime('now', '+${input.retentionDays || 30} days'))`,
   )
     .bind(crypto.randomUUID(), input.workspaceId, key, bytes.byteLength, checksum, input.requestEventId)
     .run();

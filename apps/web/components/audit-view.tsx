@@ -30,8 +30,8 @@ export function AuditView() {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    apiFetch<{ data: AuditEvent[] }>("/v1/audit?limit=100").then(({ data }) => {
-      if (data.length > 0) setEvents(data);
+    apiFetch<{ data: AuditEvent[] }>("/v1/analytics/audit?limit=100").then(({ data }) => {
+      setEvents(data);
     }).catch(() => undefined);
   }, []);
 
@@ -43,7 +43,7 @@ export function AuditView() {
       <section className="audit-integrity"><FileClock size={20} /><div><strong>Audit integrity is healthy</strong><span>Events are append-only in D1; report artifacts carry SHA-256 checksums in R2 metadata.</span></div><em>Retention: 30 days</em></section>
       <section className="panel explorer-panel">
         <div className="filter-bar"><label className="table-search"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search action, actor, or resource" aria-label="Search audit log" /></label><span className="data-mode live"><i /> {filtered.length} events</span></div>
-        <div className="audit-timeline">{filtered.map((event) => <article key={event.id}><span className={`audit-icon ${event.actor_type}`}><FileClock size={15} /></span><div className="audit-main"><div><strong>{event.action.replaceAll(".", " · ")}</strong><span className="mono">{event.resource_id ?? "system"}</span></div><p><b>{event.actor_type === "system" ? "Sentinel system" : "Maya Chen"}</b> acted on {event.resource_type}. <code>{JSON.stringify(JSON.parse(event.metadata_json))}</code></p><small>{event.request_id ? `Request ${event.request_id} · ` : ""}{new Date(event.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "medium" })}</small></div></article>)}</div>
+        <div className="audit-timeline">{filtered.map((event) => <article key={event.id}><span className={`audit-icon ${event.actor_type}`}><FileClock size={15} /></span><div className="audit-main"><div><strong>{event.action.replaceAll(".", " · ")}</strong><span className="mono">{event.resource_id ?? "system"}</span></div><p><b>{event.actor_type === "system" ? "Sentinel system" : (event.actor_id || "User")}</b> acted on {event.resource_type}. <code>{JSON.stringify(JSON.parse(event.metadata_json))}</code></p><small>{event.request_id ? `Request ${event.request_id} · ` : ""}{new Date(event.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "medium" })}</small></div></article>)}</div>
       </section>
     </>
   );

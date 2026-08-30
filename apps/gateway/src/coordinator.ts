@@ -45,6 +45,7 @@ export class EdgeCoordinator {
     await this.state.storage.setAlarm(windowStart + windowMs * 2);
     return Response.json({
       allowed: next <= input.limit,
+      limit: input.limit,
       remaining: Math.max(0, input.limit - next),
       resetAt: new Date(windowStart + windowMs).toISOString(),
     });
@@ -90,7 +91,7 @@ export class EdgeCoordinator {
     const rates = await this.state.storage.list<number>({ prefix: "rate:" });
     for (const [key] of rates.entries()) {
       const parts = key.split(":");
-      const windowStart = Number.parseInt(parts[2] ?? "", 10);
+      const windowStart = Number.parseInt(parts[parts.length - 1] ?? "", 10);
       if (Number.isFinite(windowStart) && now >= windowStart + 10 * 60 * 1_000) {
         await this.state.storage.delete(key);
       }

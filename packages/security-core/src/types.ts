@@ -25,7 +25,7 @@ export interface RequestContext {
   method: string;
   path: string;
   headers: Record<string, string>;
-  query: Record<string, string>;
+  query: Record<string, string | string[]>;
   bodyText: string;
   contentType: string;
   contentLength: number;

@@ -31,3 +31,18 @@ export function redactJson(value: unknown, depth = 0): unknown {
   }
   return value;
 }
+
+export function redactBody(bodyText: string, contentType: string, maxLength = 16_384): string {
+  if (!bodyText) return "";
+  if (contentType.toLowerCase().includes("application/json")) {
+    try {
+      const parsed = JSON.parse(bodyText);
+      const redacted = redactJson(parsed);
+      return JSON.stringify(redacted).slice(0, maxLength);
+    } catch {
+      // Fallback to text if JSON is malformed
+      return redactText(bodyText, maxLength);
+    }
+  }
+  return redactText(bodyText, maxLength);
+}

@@ -55,11 +55,24 @@ export function OverviewDashboard() {
     setRefreshing(true);
     try {
       const [overview, snapshot] = await Promise.all([
-        apiFetch<OverviewData>("/v1/analytics/overview"),
-        apiFetch<{ requestsPerMinute: number; activeSessions: number }>("/v1/analytics/live"),
+        apiFetch<any>("/v1/analytics/overview"),
+        apiFetch<any>("/v1/analytics/live"),
       ]);
-      setData(overview);
-      setLive(snapshot);
+      setData({
+        summary: {
+           totalRequests: overview.summary.total_requests || 0,
+           blocked: overview.summary.blocked || 0,
+           rateLimited: overview.summary.rate_limited || 0,
+           averageLatency: overview.summary.average_latency || 0,
+           averageRisk: overview.summary.average_risk || 0,
+        },
+        series: overview.series,
+        topThreats: overview.topThreats
+      });
+      setLive({
+        requestsPerMinute: snapshot.live?.requests || 0,
+        activeSessions: snapshot.activeUsers || 0
+      });
       setDemoMode(false);
     } catch {
       setDemoMode(true);

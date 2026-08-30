@@ -2,12 +2,14 @@ import type { Role, ThreatSignal } from "@sentinel/security-core";
 import type { Env } from "./env";
 import type { SessionUser } from "./types";
 import { authenticateSession, hasRole } from "./auth";
+import { hmacSha256 } from "./crypto";
 
 export type AppBindings = {
   Bindings: Env;
   Variables: {
     requestId: string;
     user: SessionUser;
+    apiKey?: { id: string; workspaceId: string };
   };
 };
 
@@ -87,6 +89,6 @@ export async function recordRequest(
     input.eventId, input.workspaceId, input.apiKeyId, input.upstreamId, input.requestId,
     input.context.method, input.context.path, input.statusCode, input.decision, input.policyId,
     JSON.stringify(input.signals.map((s) => s.category)), riskScore(input.signals),
-    input.context.country ?? null, input.context.clientIp ?? null, input.latencyMs, input.context.contentLength, input.responseBytes,
+    input.context.country ?? null, input.context.clientIp ? await hmacSha256(env.SESSION_SECRET, input.context.clientIp) : null, input.latencyMs, input.context.contentLength, input.responseBytes,
   ).run();
 }

@@ -33,7 +33,7 @@ export function PoliciesView() {
 
   useEffect(() => {
     apiFetch<{ data: Policy[] }>("/v1/policies").then(({ data }) => {
-      if (data.length > 0) setPolicies(data);
+      setPolicies(data);
     }).catch(() => undefined);
   }, []);
 

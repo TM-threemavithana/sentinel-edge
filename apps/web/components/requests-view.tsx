@@ -44,7 +44,7 @@ export function RequestsView() {
   const [demoMode, setDemoMode] = useState(true);
 
   useEffect(() => {
-    apiFetch<{ data: RequestEvent[] }>("/v1/requests?limit=100").then(({ data }) => {
+    apiFetch<{ data: RequestEvent[] }>("/v1/analytics/requests?limit=100").then(({ data }) => {
       if (data.length > 0) setRequests(data);
       setDemoMode(data.length === 0);
     }).catch(() => setDemoMode(true));
