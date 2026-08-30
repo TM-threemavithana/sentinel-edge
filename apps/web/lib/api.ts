@@ -9,10 +9,10 @@ export class ApiError extends Error {
 }
 
 function getGatewayOrigin(): string {
-  const env = typeof process !== "undefined" ? process.env : ({} as Record<string, string | undefined>);
-  const origin = env.NEXT_PUBLIC_GATEWAY_ORIGIN;
+  // Use direct literal for static replacement by the bundler
+  const origin = process.env.NEXT_PUBLIC_GATEWAY_ORIGIN || import.meta.env?.NEXT_PUBLIC_GATEWAY_ORIGIN || import.meta.env?.VITE_GATEWAY_ORIGIN;
   if (!origin) {
-    if (env.NODE_ENV === "development") return "http://127.0.0.1:8787";
+    if (process.env.NODE_ENV === "development" || import.meta.env?.DEV) return "http://127.0.0.1:8787";
     throw new Error("NEXT_PUBLIC_GATEWAY_ORIGIN must be set in production");
   }
   return origin;
