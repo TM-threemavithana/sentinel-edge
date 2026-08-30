@@ -78,8 +78,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Apply D1 migrations
-        run: pnpm --filter @sentinel/gateway db:migrate:remote
+        run: pnpm --filter @sentinel/gateway db:migrate:remote --env production
       - name: Deploy gateway
-        run: pnpm --filter @sentinel/gateway run deploy
+        run: pnpm --filter @sentinel/gateway run deploy --env production
       - name: Deploy console
         run: pnpm --filter @sentinel/web run deploy

@@ -54,12 +54,6 @@
     "enabled": true,
     "head_sampling_rate": 1
   },
-  "r2_buckets": [
-    {
-      "binding": "ARTIFACTS",
-      "bucket_name": "sentinel-artifacts"
-    }
-  ],
   "env": {
     "staging": {
       "name": "sentinel-edge-gateway-staging",
@@ -85,12 +79,6 @@
         {
           "binding": "POLICY_CACHE",
           "id": "STAGING_KV_ID_PLACEHOLDER"
-        }
-      ],
-      "r2_buckets": [
-        {
-          "binding": "ARTIFACTS",
-          "bucket_name": "sentinel-artifacts-staging"
         }
       ],
       "ai": {
