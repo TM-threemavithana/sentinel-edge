@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
-import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
-const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit", display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://sentinel-edge.example.com"),
   title: {
-    default: "Sentinel Edge | AI & API Security Gateway",
-    template: "%s | Sentinel Edge",
+    default: "Sentinel Edge — AI & API Security Gateway",
+    template: "%s · Sentinel Edge",
   },
   description: "Inspect, govern, and monitor AI and API traffic at Cloudflare's edge.",
   applicationName: "Sentinel Edge",
@@ -29,8 +25,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${outfit.variable}`}>
-      <body className="antialiased">{children}</body>
+    <html lang="en">
+      <body>{children}</body>
     </html>
   );
 }
