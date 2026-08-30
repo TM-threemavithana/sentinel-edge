@@ -1,0 +1,32 @@
+{
+  "name": "@sentinel/gateway",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev --port 8787",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "cf:typegen": "wrangler types",
+    "db:migrate:local": "wrangler d1 migrations apply sentinel-edge-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply sentinel-edge-db --remote",
+    "db:seed:local": "wrangler d1 execute sentinel-edge-db --local --file=seed/seed.sql",
+    "db:seed:remote": "wrangler d1 execute sentinel-edge-db --remote --file=seed/seed.sql"
+  },
+  "dependencies": {
+    "@sentinel/security-core": "workspace:*",
+    "hono": "^4.9.6",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260830.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "wrangler": "^4.68.0"
+  }
+}

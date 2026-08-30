@@ -1,0 +1,3 @@
+# Copy to .dev.vars. Never commit the real file.
+SESSION_SECRET=replace-with-at-least-32-random-bytes
+UPSTREAM_ENCRYPTION_KEY=replace-with-a-base64url-encoded-32-byte-key

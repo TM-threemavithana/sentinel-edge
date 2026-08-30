@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sentinel-edge-console",
+  "main": "vinext/server/fetch-handler",
+  "compatibility_date": "2026-08-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "dist/client",
+    "not_found_handling": "none",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "GATEWAY_ORIGIN": "https://sentinel-edge-gateway.tharukamaduwantha62.workers.dev",
+    "NEXT_PUBLIC_GATEWAY_ORIGIN": "https://sentinel-edge-gateway.tharukamaduwantha62.workers.dev",
+    "NEXT_PUBLIC_APP_NAME": "Sentinel Edge"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
