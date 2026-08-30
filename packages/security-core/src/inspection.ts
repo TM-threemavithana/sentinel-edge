@@ -94,12 +94,15 @@ export function deduplicateSignals(signals: ThreatSignal[]): ThreatSignal[] {
 
   for (const signal of signals) {
     const current = byCategory.get(signal.category);
-    if (
-      !current ||
-      severityRank[signal.severity] > severityRank[current.severity] ||
-      signal.confidence > current.confidence
-    ) {
+    if (!current) {
       byCategory.set(signal.category, signal);
+    } else {
+      const isHigherSeverity = severityRank[signal.severity] > severityRank[current.severity];
+      const isSameSeverity = severityRank[signal.severity] === severityRank[current.severity];
+      const isHigherConfidence = signal.confidence > current.confidence;
+      if (isHigherSeverity || (isSameSeverity && isHigherConfidence)) {
+        byCategory.set(signal.category, signal);
+      }
     }
   }
 
