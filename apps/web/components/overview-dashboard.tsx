@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, ArrowDownRight, ArrowUpRight, Ban, Clock3, RefreshCw, ShieldAlert, Zap } from "lucide-react";
+import { Activity, ArrowDownRight, ArrowUpRight, Ban, Clock3, RefreshCw, ShieldAlert, ShieldCheck, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { PageHeader, StatusBadge } from "./page-header";
@@ -121,24 +121,28 @@ export function OverviewDashboard() {
   return (
     <>
       <PageHeader
-        eyebrow="Security operations · Live"
+        eyebrow="Security operations"
         title="Threat posture"
-        description="A real-time view of every policy decision across your AI and API perimeter."
+        description="Monitor policy outcomes, emerging threats, and gateway performance across your perimeter."
         actions={<><span className={`data-mode ${demoMode ? "demo" : "live"}`}><i /> {demoMode ? "Sample dataset" : "Live gateway"}</span><button className="button secondary" type="button" onClick={refresh} disabled={refreshing}><RefreshCw size={15} className={refreshing ? "spin" : ""} /> Refresh</button></>}
       />
+      <section className="ops-brief" aria-label="Current protection status">
+        <div className="ops-brief-status"><span className="ops-brief-icon"><ShieldCheck size={21} /></span><div><span className="eyebrow">Current status</span><h2>Your perimeter is protected</h2><p>All core controls are active. One credential rotation needs attention this week.</p></div></div>
+        <div className="ops-brief-metrics"><span><small>Protection score</small><strong>92<span>/100</span></strong></span><span><small>Current throughput</small><strong>{number(live.requestsPerMinute)}<span> req/min</span></strong></span><span><small>Average risk</small><strong>{data.summary.averageRisk.toFixed(1)}<span> / 100</span></strong></span></div>
+      </section>
       <section className="stat-grid" aria-label="24 hour security summary">
         {stats.map((stat) => {
           const Icon = stat.icon;
-          return <article className="stat-card" key={stat.label}><div className={`stat-icon ${stat.tone}`}><Icon size={18} /></div><span>{stat.label}<small>Last 24 hours</small></span><strong>{stat.value}</strong><em className={stat.positive ? "positive" : "negative"}>{stat.positive ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}{stat.trend}</em></article>;
+          return <article className={`stat-card ${stat.tone}`} key={stat.label}><div className={`stat-icon ${stat.tone}`}><Icon size={18} /></div><span>{stat.label}<small>Last 24 hours</small></span><strong>{stat.value}</strong><em className={stat.positive ? "positive" : "negative"}>{stat.positive ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}{stat.trend}</em></article>;
         })}
       </section>
       <section className="overview-grid">
         <article className="panel traffic-panel">
-          <div className="panel-heading"><div><h2>Traffic & decisions</h2><p>Requests inspected at the edge over 24 hours</p></div><div className="chart-legend"><span><i className="request-dot" /> Requests</span><span><i className="blocked-dot" /> Blocked</span></div></div>
+          <div className="panel-heading"><div><span className="panel-kicker">24-hour activity</span><h2>Traffic & decisions</h2><p>Requests inspected at the edge</p></div><div className="chart-legend"><span><i className="request-dot" /> Requests</span><span><i className="blocked-dot" /> Blocked</span></div></div>
           <TrendChart points={chartPoints} />
         </article>
         <article className="panel protection-panel">
-          <div className="panel-heading"><div><h2>Protection score</h2><p>Policy coverage and response health</p></div><ShieldAlert size={18} /></div>
+          <div className="panel-heading"><div><span className="panel-kicker">Coverage</span><h2>Protection score</h2><p>Policy coverage and response health</p></div><ShieldAlert size={18} /></div>
           <div className="score-ring" style={{ "--score": "92%" } as React.CSSProperties}><div><strong>92</strong><span>/100</span><small>Strong</small></div></div>
           <div className="score-items"><span><i className="good" /> Core policies<strong>8 / 8</strong></span><span><i className="good" /> AI inspection<strong>Active</strong></span><span><i className="warn" /> Key rotation<strong>1 due</strong></span></div>
           <div className="live-strip"><span><i /> {number(live.requestsPerMinute)} req/min</span><span>{live.activeSessions} active sessions</span></div>

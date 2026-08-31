@@ -2,9 +2,7 @@
 
 import {
   Activity,
-  Bell,
   BookOpenText,
-  ChevronDown,
   FileClock,
   Gauge,
   KeyRound,
@@ -30,6 +28,15 @@ const navigation = [
   { href: "/dashboard/audit", label: "Audit log", icon: FileClock },
 ];
 
+const routeLabels: Record<string, string> = {
+  "/dashboard": "Threat posture",
+  "/dashboard/requests": "Request explorer",
+  "/dashboard/policies": "Policy engine",
+  "/dashboard/api-keys": "API keys",
+  "/dashboard/audit": "Audit log",
+  "/dashboard/settings": "Settings",
+};
+
 interface Viewer {
   displayName: string;
   email: string;
@@ -42,6 +49,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [viewer, setViewer] = useState<Viewer | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const currentRoute = Object.entries(routeLabels)
+    .sort(([a], [b]) => b.length - a.length)
+    .find(([route]) => route === "/dashboard" ? pathname === route : pathname.startsWith(route));
 
   useEffect(() => {
     let active = true;
@@ -67,10 +77,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="workspace-switcher">
           <span className="workspace-avatar">AC</span>
           <span><small>Workspace</small><strong>{viewer?.workspaceName ?? "Acme AI Platform"}</strong></span>
-          <ChevronDown size={15} />
         </div>
         <nav className="primary-nav" aria-label="Main navigation">
-          <span className="nav-label">Security operations</span>
+          <span className="nav-label">Monitor</span>
           {navigation.map((item) => {
             const active = item.href === "/dashboard" ? pathname === item.href : pathname.startsWith(item.href);
             const Icon = item.icon;
@@ -82,13 +91,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
-          <span className="nav-label second">Manage</span>
+          <span className="nav-label second">Configure</span>
           <Link className={pathname.startsWith("/dashboard/settings") ? "active" : ""} href="/dashboard/settings" onClick={() => setMenuOpen(false)}><Settings size={17} /><span>Settings</span></Link>
           <a href="https://developers.cloudflare.com/workers/" target="_blank" rel="noreferrer"><BookOpenText size={17} /><span>Documentation</span></a>
         </nav>
         <div className="security-state">
           <span className="pulse-dot" />
-          <div><strong>All systems guarded</strong><small>7 edge regions active</small></div>
+          <div><strong>Gateway operational</strong><small>7 regions reporting</small></div>
           <ShieldCheck size={18} />
         </div>
         <div className="sidebar-user">
@@ -101,10 +110,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="main-column">
         <header className="topbar">
           <button className="icon-button mobile-only" type="button" onClick={() => setMenuOpen(true)} aria-label="Open navigation"><Menu size={19} /></button>
-          <div className="command-search"><Search size={16} /><span>Search requests, policies, keys…</span><kbd>⌘ K</kbd></div>
+          <div className="topbar-context"><small>Sentinel Edge</small><strong>{currentRoute?.[1] ?? "Console"}</strong></div>
+          <Link className="command-search" href="/dashboard/requests" aria-label="Search gateway requests"><Search size={16} /><span>Search requests</span><kbd>⌘ K</kbd></Link>
           <div className="topbar-actions">
             <span className="environment-pill"><i /> Production</span>
-            <button className="icon-button notification-button" type="button" aria-label="Notifications"><Bell size={18} /><b /></button>
           </div>
         </header>
         <main className="console-main">{children}</main>

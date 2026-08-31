@@ -4,7 +4,7 @@ test('login page loads and displays brand', async ({ page }) => {
   await page.goto('/login');
   
   // Wait for the login form to load
-  await expect(page.locator('h1').filter({ hasText: 'Your AI traffic.' })).toBeVisible();
+  await expect(page.locator('h1').filter({ hasText: 'Control every' })).toBeVisible();
   
   // Verify inputs are present
   await expect(page.locator('input[type="email"]')).toBeVisible();

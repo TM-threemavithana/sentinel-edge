@@ -25,12 +25,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{ sessionExpired }}>
       {sessionExpired && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999,
-          background: "rgba(220, 38, 38, 0.95)", color: "white",
-          padding: "12px 24px", textAlign: "center", fontSize: "14px",
-        }}>
-          Your session has expired. Redirecting to login...
+        <div className="session-banner" role="status">
+          Your session has expired. Redirecting to sign in…
         </div>
       )}
       {children}

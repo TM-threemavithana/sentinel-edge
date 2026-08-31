@@ -7,7 +7,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
       {compact ? null : (
         <span className="brand-copy">
           <strong>Sentinel</strong>
-          <span>Edge</span>
+          <span>Edge security</span>
         </span>
       )}
     </div>

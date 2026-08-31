@@ -28,13 +28,15 @@ export function ApiKeysView() {
   const [revealedKey, setRevealedKey] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const [demoMode, setDemoMode] = useState(true);
 
   async function load() {
     try {
       const { data } = await apiFetch<{ data: ApiKeyRecord[] }>("/v1/api-keys");
       setKeys(data);
+      setDemoMode(false);
     } catch {
-      // The portfolio preview remains useful before the local gateway is started.
+      setDemoMode(true);
     }
   }
 
@@ -74,12 +76,13 @@ export function ApiKeysView() {
 
   return (
     <>
-      <PageHeader eyebrow="Credentials" title="API key management" description="Issue scoped gateway credentials, review usage, and revoke access without downtime." actions={<button className="button primary" type="button" onClick={() => { setModalOpen(true); setRevealedKey(""); }}><CirclePlus size={16} /> Create API key</button>} />
+      <PageHeader eyebrow="Credentials" title="API key management" description="Issue scoped gateway credentials, review usage, and revoke access without downtime." actions={<><span className={`data-mode ${demoMode ? "demo" : "live"}`}><i /> {demoMode ? "Sample credentials" : "Live credentials"}</span><button className="button primary" type="button" onClick={() => { setModalOpen(true); setRevealedKey(""); }}><CirclePlus size={16} /> Create API key</button></>} />
       <section className="key-callout"><div><span className="key-callout-icon"><Shield size={21} /></span><span><strong>Keys are stored as one-way digests</strong><small>Sentinel Edge reveals a secret exactly once. Copy it to your secret manager before closing the dialog.</small></span></div><a href="/dashboard/audit">Review credential events →</a></section>
       {error ? <div className="inline-notice error">{error}</div> : null}
       <section className="panel key-list">
         <div className="panel-heading"><div><h2>Workspace keys</h2><p>{keys.filter((key) => key.status === "active").length} active credentials</p></div></div>
         <div className="table-wrap spacious"><table><thead><tr><th>Name</th><th>Key prefix</th><th>Scopes</th><th>Status</th><th>Last used</th><th>Expires</th><th aria-label="Actions" /></tr></thead><tbody>{keys.map((key) => <tr key={key.id}><td><span className="key-name"><i><KeyRound size={16} /></i><span><strong>{key.name}</strong><small>Created {new Date(key.created_at).toLocaleDateString()}</small></span></span></td><td><code className="key-prefix">{key.key_prefix}••••••••</code></td><td><div className="scope-list">{(JSON.parse(key.scopes_json) as string[]).map((scope) => <span key={scope}>{scope}</span>)}</div></td><td><StatusBadge value={key.status} /></td><td>{key.last_used_at ? new Date(key.last_used_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "Never"}</td><td>{key.expires_at ? new Date(key.expires_at).toLocaleDateString() : "Never"}</td><td><button className="icon-button danger-hover" type="button" onClick={() => revoke(key.id)} disabled={key.status !== "active"} aria-label={`Revoke ${key.name}`}><Trash2 size={16} /></button></td></tr>)}</tbody></table></div>
+        {keys.length === 0 ? <div className="table-empty"><KeyRound size={22} /><strong>No API keys issued</strong><span>Create a scoped key for your first gateway client.</span></div> : null}
       </section>
       {modalOpen ? <div className="modal-backdrop"><section className="modal key-modal" role="dialog" aria-modal="true" aria-labelledby="key-dialog-title"><header><div><span className="eyebrow">Workspace credential</span><h2 id="key-dialog-title">{revealedKey ? "Save your API key" : "Create an API key"}</h2></div><button className="icon-button" type="button" onClick={() => setModalOpen(false)} aria-label="Close"><X size={18} /></button></header>{revealedKey ? <div className="revealed-key"><p>This value won’t be shown again. Store it in a secret manager, never in source control.</p><div><code>{revealedKey}</code><button className="button secondary" type="button" onClick={copyKey}>{copied ? <Check size={15} /> : <Copy size={15} />} {copied ? "Copied" : "Copy"}</button></div><button className="button primary full" type="button" onClick={() => setModalOpen(false)}>I’ve stored this key</button></div> : <form onSubmit={create}><label>Key name<input name="name" required minLength={2} placeholder="Production inference" /></label><label>Scope<select name="scope" defaultValue="gateway:invoke"><option value="gateway:invoke">Gateway invoke</option></select></label><div className="form-hint"><Shield size={16} /><span>Start with the narrowest scope. Create separate keys for each environment and workload.</span></div><footer><button className="button ghost" type="button" onClick={() => setModalOpen(false)}>Cancel</button><button className="button primary" type="submit">Create key</button></footer></form>}</section></div> : null}
     </>

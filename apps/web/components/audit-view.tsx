@@ -28,22 +28,34 @@ const SAMPLE: AuditEvent[] = SAMPLE_ACTIONS.map((action, index) => ({
 export function AuditView() {
   const [events, setEvents] = useState(SAMPLE);
   const [query, setQuery] = useState("");
+  const [demoMode, setDemoMode] = useState(true);
 
   useEffect(() => {
     apiFetch<{ data: AuditEvent[] }>("/v1/analytics/audit?limit=100").then(({ data }) => {
       setEvents(data);
-    }).catch(() => undefined);
+      setDemoMode(false);
+    }).catch(() => setDemoMode(true));
   }, []);
 
   const filtered = useMemo(() => events.filter((event) => `${event.action} ${event.resource_type} ${event.actor_id}`.toLowerCase().includes(query.toLowerCase())), [events, query]);
 
+  function exportLog() {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(filtered, null, 2)], { type: "application/json" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "sentinel-edge-audit.json";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <>
-      <PageHeader eyebrow="Governance" title="Audit log" description="An immutable activity trail for administrative and security-sensitive changes." actions={<button className="button secondary" type="button"><Download size={15} /> Export log</button>} />
+      <PageHeader eyebrow="Governance" title="Audit log" description="An immutable activity trail for administrative and security-sensitive changes." actions={<><span className={`data-mode ${demoMode ? "demo" : "live"}`}><i /> {demoMode ? "Sample events" : "Live audit trail"}</span><button className="button secondary" type="button" onClick={exportLog}><Download size={15} /> Export JSON</button></>} />
       <section className="audit-integrity"><FileClock size={20} /><div><strong>Audit integrity is healthy</strong><span>Events are append-only in D1; report artifacts carry SHA-256 checksums in R2 metadata.</span></div><em>Retention: 30 days</em></section>
       <section className="panel explorer-panel">
         <div className="filter-bar"><label className="table-search"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search action, actor, or resource" aria-label="Search audit log" /></label><span className="data-mode live"><i /> {filtered.length} events</span></div>
         <div className="audit-timeline">{filtered.map((event) => <article key={event.id}><span className={`audit-icon ${event.actor_type}`}><FileClock size={15} /></span><div className="audit-main"><div><strong>{event.action.replaceAll(".", " · ")}</strong><span className="mono">{event.resource_id ?? "system"}</span></div><p><b>{event.actor_type === "system" ? "Sentinel system" : (event.actor_id || "User")}</b> acted on {event.resource_type}. <code>{JSON.stringify(JSON.parse(event.metadata_json))}</code></p><small>{event.request_id ? `Request ${event.request_id} · ` : ""}{new Date(event.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "medium" })}</small></div></article>)}</div>
+        {filtered.length === 0 ? <div className="table-empty"><Search size={22} /><strong>No audit events match</strong><span>Clear the search to return to the full activity trail.</span></div> : null}
       </section>
     </>
   );
