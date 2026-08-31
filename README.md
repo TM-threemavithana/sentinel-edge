@@ -22,7 +22,7 @@ engine, tenant-aware rate limits, and asynchronous Workers AI classification.
 - Cloudflare Queue producer/consumer with retries and a dead-letter queue
 - Durable Object coordination for rate limits, live counters, and session presence
 - Workers AI structured threat classification
-- Opaque cookie sessions, PBKDF2 passwords, RBAC, Origin checks, and audit events
+- Opaque cookie sessions, PBKDF2 passwords, TOTP MFA with recovery codes, RBAC, Origin checks, and audit events
 - One-time API key reveal and SHA-256 digest storage
 - Ordered rule engine, deterministic request inspection, SSRF-safe upstreams,
   request size bounds, header stripping, and credential encryption
@@ -111,15 +111,16 @@ pnpm --filter @sentinel/gateway db:migrate:local
 pnpm --filter @sentinel/gateway db:seed:local
 ```
 
-The local demo login is:
+The seed intentionally contains no usable login credential. Create a local-only
+administrator with a unique password supplied through your shell environment:
 
-```text
-Email:    admin@sentinel.local
-Password: SentinelDemo!2026
-Role:     admin
+```bash
+SENTINEL_ADMIN_EMAIL=you@example.com \
+SENTINEL_ADMIN_PASSWORD='use-a-unique-password-of-16+-characters' \
+pnpm --filter @sentinel/gateway db:admin:local
 ```
 
-Change or remove this seeded account before any shared deployment.
+The command targets local D1 only and deletes its temporary SQL file after use.
 
 ### 4. Start both apps
 
@@ -180,50 +181,70 @@ Run these from `apps/gateway` after `wrangler login`:
 ```bash
 pnpm exec wrangler d1 create sentinel-edge-db
 pnpm exec wrangler kv namespace create POLICY_CACHE
-pnpm exec wrangler r2 bucket create sentinel-edge-artifacts
+pnpm exec wrangler d1 create sentinel-edge-db-staging
+pnpm exec wrangler kv namespace create POLICY_CACHE_STAGING
 pnpm exec wrangler queues create sentinel-edge-analysis
 pnpm exec wrangler queues create sentinel-edge-analysis-dlq
+pnpm exec wrangler queues create sentinel-edge-analysis-staging
+pnpm exec wrangler queues create sentinel-edge-analysis-staging-dlq
+# Optional when artifact storage is enabled:
+pnpm exec wrangler r2 bucket create sentinel-edge-artifacts
+pnpm exec wrangler r2 bucket create sentinel-edge-artifacts-staging
 ```
 
 Copy the returned D1 and KV IDs into `apps/gateway/wrangler.jsonc`, replacing the
-`REPLACE_WITH_…` markers. Durable Object storage is created by the Worker
+environment-specific placeholder IDs. Do not deploy while any placeholder ID
+remains. R2 is optional while `FREE_TIER_MODE=true`; artifact writes and downloads
+are disabled when its binding is omitted. To enable artifact storage, create a
+separate Standard-class R2 bucket for each environment and add its `ARTIFACTS`
+binding. Durable Object storage is created by the Worker
 migration during deployment. Workers AI uses the declared `AI` binding and does
 not require a separate resource creation command.
 
-Create production secrets:
+After the first non-serving Worker version has been uploaded, create independent
+secrets for staging and production. `SESSION_SECRET` should be at least 32 random
+characters. `UPSTREAM_ENCRYPTION_KEY` must be exactly 32 random bytes encoded as
+unpadded base64url (43 characters):
 
 ```bash
-pnpm exec wrangler secret put SESSION_SECRET
-pnpm exec wrangler secret put UPSTREAM_ENCRYPTION_KEY
-pnpm exec wrangler secret put ALLOWED_ORIGINS
+pnpm exec wrangler secret put SESSION_SECRET --env staging
+pnpm exec wrangler secret put UPSTREAM_ENCRYPTION_KEY --env staging
+pnpm exec wrangler secret put SESSION_SECRET --env production
+pnpm exec wrangler secret put UPSTREAM_ENCRYPTION_KEY --env production
 ```
 
-`ALLOWED_ORIGINS` is a comma-separated list, for example
-`https://security.example.com`. Do not put secrets in `vars` or commit them.
+`ALLOWED_ORIGINS` is a non-secret, comma-separated list of canonical HTTPS
+origins, for example `https://security.example.com`. Keep it in the appropriate
+Wrangler environment. Never put secret values in `vars` or commit them.
 
 ## Database deployment
 
 Apply the migration before deploying code that expects it:
 
 ```bash
-pnpm --filter @sentinel/gateway db:migrate:remote
+pnpm --filter @sentinel/gateway db:migrate:staging
+pnpm --filter @sentinel/gateway db:migrate:production
 ```
 
-Seed data is optional in production and should normally be replaced by a tenant
-provisioning flow. If you intentionally want the demo workspace:
+Do not seed production with the local demo workspace. Provision production
+administrators through the deployment identity system or a separate audited,
+single-use bootstrap process. Migration `0002_disable_demo_admin.sql` disables
+the previously published demo credential and removes its sessions.
 
-```bash
-pnpm --filter @sentinel/gateway db:seed:remote
-```
-
-Never expose the demo password on a public deployment.
+For a controlled local-password bootstrap, set `SENTINEL_ADMIN_ENV`,
+`SENTINEL_ADMIN_EMAIL`, and `SENTINEL_ADMIN_PASSWORD`, then run
+`pnpm --filter @sentinel/gateway db:admin:remote`. The command creates or rotates
+one administrator, revokes its existing sessions, records an audit event, and
+removes its temporary SQL file. Prefer OIDC or Cloudflare Access for an
+organization deployment.
 
 ## Deploy the gateway
 
 From the repository root:
 
 ```bash
-pnpm --filter @sentinel/gateway deploy
+pnpm --filter @sentinel/gateway deploy:staging
+pnpm --filter @sentinel/gateway deploy:production
 ```
 
 Confirm `/health` returns `200`, apply a custom domain if desired, and note the
@@ -231,15 +252,16 @@ gateway origin.
 
 ## Deploy the Next.js console
 
-1. Set `GATEWAY_ORIGIN` in `apps/web/wrangler.jsonc` to the deployed gateway
-   origin. For a stricter production topology, protect the gateway management
-   routes with Cloudflare Access or use a service binding/BFF-only route.
+1. Verify the environment-specific `GATEWAY_ORIGIN` and `GATEWAY_SERVICE`
+   bindings in `apps/web/wrangler.jsonc`. Browser requests stay same-origin and
+   the console proxy reaches the gateway through the private service binding.
 2. Replace the example `metadataBase` in `apps/web/app/layout.tsx` with the final
    trusted console origin.
 3. Deploy:
 
 ```bash
-pnpm --filter @sentinel/web deploy
+pnpm --filter @sentinel/web deploy:staging
+pnpm --filter @sentinel/web deploy:production
 ```
 
 The web deployment uses `vinext build` and Wrangler. Connect a custom domain in
@@ -260,19 +282,47 @@ applies migrations, deploys the gateway, and deploys the console in that order.
 
 ## Authentication and RBAC
 
-Local authentication is implemented completely so the repository runs without
-an external identity provider:
+Local authentication is implemented completely so the repository can run
+without a paid identity provider:
 
 - salted PBKDF2-SHA-256 password verification
+- standards-compatible TOTP authenticator verification with replay prevention
+- eight single-use recovery codes stored only as SHA-256 digests
+- restricted enrollment sessions that cannot access management APIs
+- forced password replacement during first MFA enrollment
 - random opaque sessions; only the SHA-256 token digest is stored
-- HttpOnly, SameSite=Strict cookies (`Secure` outside development)
+- HttpOnly, SameSite=Lax cookies (`Secure` outside development)
 - administrator, analyst, and viewer roles
 - server-side authorization on every management route
 
-For a real organization, replace password login with Cloudflare Access or OIDC.
-Keep the same `SessionUser` and membership boundary so route authorization stays
-centralized. Cloudflare Access authenticates identity; this application must
-still enforce workspace membership and role permissions.
+Staging and production set `MFA_REQUIRED=true`. After a valid password is
+entered for an account without MFA, the console permits only authenticator
+enrollment. The user scans the QR code, confirms a current six-digit code,
+chooses a new password of at least 16 characters, and saves the recovery codes.
+Existing sessions are revoked and normal APIs remain unavailable until setup is
+confirmed.
+
+Production supports Cloudflare Access identity enforcement. Set
+`ACCESS_REQUIRED=true`, `ACCESS_TEAM_DOMAIN`, and the application `ACCESS_AUD`
+after creating an Access self-hosted application for the console hostname. The
+gateway verifies the Access JWT against the team JWKS, requires a pre-provisioned
+user, then creates the existing workspace-scoped session. Local password login
+is disabled whenever Access is required.
+
+Convert a pre-provisioned administrator to Access without creating another
+password:
+
+```bash
+SENTINEL_ADMIN_ENV=production \
+SENTINEL_ADMIN_PROVIDER=access \
+SENTINEL_ADMIN_EMAIL=you@example.com \
+pnpm --filter @sentinel/gateway db:admin:remote
+```
+
+Cloudflare Access policies should require the approved identity and an MFA
+method. Sentinel Edge continues to enforce workspace membership and role
+permissions after Access authentication. Access is optional when the built-in
+TOTP flow is enforced, so the console does not require a paid identity service.
 
 ## Security design highlights
 
@@ -302,8 +352,8 @@ severity, and body conditions. Add new operators in
 
 ## Current limitations
 
-- Local login is intentionally simple; password reset, MFA, invite, and email
-  verification belong to the selected external identity provider.
+- Self-service password reset, invitations, and email verification are not yet
+  implemented. Administrators must follow the audited recovery runbook.
 - The IP/private-host validator covers direct literal targets. Production SSRF
   defenses should additionally resolve and continuously verify DNS destinations.
 - File uploads are pattern-inspected, not antivirus-scanned.

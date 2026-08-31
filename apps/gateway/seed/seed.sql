@@ -4,11 +4,20 @@ VALUES ('ws_demo', 'Acme AI Platform', 'acme-ai', 'enterprise', 30);
 INSERT OR IGNORE INTO users (id, email, display_name, password_hash, auth_provider)
 VALUES (
   'usr_demo_admin',
-  'admin@sentinel.local',
-  'Maya Chen',
-  'pbkdf2$1000$ia1H7laZEelYQh329v4Lrw$GcKjSLTYBipVuM_Xuj9IGt_lJHOlKuVJeCM7vzBeN6Q',
-  'local'
+  'bootstrap-disabled@sentinel.invalid',
+  'Disabled bootstrap owner',
+  NULL,
+  'oidc'
 );
+
+-- Defense in depth for databases that previously received the demo credential.
+UPDATE users
+SET email = 'bootstrap-disabled@sentinel.invalid',
+    display_name = 'Disabled bootstrap owner',
+    password_hash = NULL,
+    auth_provider = 'oidc',
+    status = 'disabled'
+WHERE id = 'usr_demo_admin';
 
 INSERT OR IGNORE INTO memberships (workspace_id, user_id, role)
 VALUES ('ws_demo', 'usr_demo_admin', 'admin');

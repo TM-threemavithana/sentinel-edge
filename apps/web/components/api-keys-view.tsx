@@ -16,27 +16,22 @@ interface ApiKeyRecord {
   created_at: string;
 }
 
-const SAMPLE: ApiKeyRecord[] = [
-  { id: "key_prod", name: "Production inference", key_prefix: "sg_live_E7x2aQ", scopes_json: '["gateway:invoke"]', status: "active", expires_at: null, last_used_at: new Date(Date.now() - 120_000).toISOString(), created_at: new Date(Date.now() - 7_776_000_000).toISOString() },
-  { id: "key_staging", name: "Staging tests", key_prefix: "sg_live_R9p4kM", scopes_json: '["gateway:invoke","analytics:read"]', status: "active", expires_at: new Date(Date.now() + 2_592_000_000).toISOString(), last_used_at: new Date(Date.now() - 86_400_000).toISOString(), created_at: new Date(Date.now() - 2_592_000_000).toISOString() },
-  { id: "key_legacy", name: "Legacy integration", key_prefix: "sg_live_B2n8vL", scopes_json: '["gateway:invoke"]', status: "revoked", expires_at: null, last_used_at: new Date(Date.now() - 7_776_000_000).toISOString(), created_at: new Date(Date.now() - 15_552_000_000).toISOString() },
-];
-
 export function ApiKeysView() {
-  const [keys, setKeys] = useState(SAMPLE);
+  const [keys, setKeys] = useState<ApiKeyRecord[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [revealedKey, setRevealedKey] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
-  const [demoMode, setDemoMode] = useState(true);
+  const [loaded, setLoaded] = useState(false);
 
   async function load() {
     try {
       const { data } = await apiFetch<{ data: ApiKeyRecord[] }>("/v1/api-keys");
       setKeys(data);
-      setDemoMode(false);
+      setLoaded(true);
     } catch {
-      setDemoMode(true);
+      setLoaded(false);
+      setError("Live credentials are unavailable");
     }
   }
 
@@ -76,9 +71,9 @@ export function ApiKeysView() {
 
   return (
     <>
-      <PageHeader eyebrow="Credentials" title="API key management" description="Issue scoped gateway credentials, review usage, and revoke access without downtime." actions={<><span className={`data-mode ${demoMode ? "demo" : "live"}`}><i /> {demoMode ? "Sample credentials" : "Live credentials"}</span><button className="button primary" type="button" onClick={() => { setModalOpen(true); setRevealedKey(""); }}><CirclePlus size={16} /> Create API key</button></>} />
+      <PageHeader eyebrow="Credentials" title="API key management" description="Issue scoped gateway credentials, review usage, and revoke access without downtime." actions={<><span className={`data-mode ${loaded ? "live" : "demo"}`}><i /> {loaded ? "Live credentials" : "Credentials unavailable"}</span><button className="button primary" type="button" disabled={!loaded} onClick={() => { setModalOpen(true); setRevealedKey(""); }}><CirclePlus size={16} /> Create API key</button></>} />
       <section className="key-callout"><div><span className="key-callout-icon"><Shield size={21} /></span><span><strong>Keys are stored as one-way digests</strong><small>Sentinel Edge reveals a secret exactly once. Copy it to your secret manager before closing the dialog.</small></span></div><a href="/dashboard/audit">Review credential events →</a></section>
-      {error ? <div className="inline-notice error">{error}</div> : null}
+      {error ? <div className="inline-notice error" role="status" aria-live="polite">{error}</div> : null}
       <section className="panel key-list">
         <div className="panel-heading"><div><h2>Workspace keys</h2><p>{keys.filter((key) => key.status === "active").length} active credentials</p></div></div>
         <div className="table-wrap spacious"><table><thead><tr><th>Name</th><th>Key prefix</th><th>Scopes</th><th>Status</th><th>Last used</th><th>Expires</th><th aria-label="Actions" /></tr></thead><tbody>{keys.map((key) => <tr key={key.id}><td><span className="key-name"><i><KeyRound size={16} /></i><span><strong>{key.name}</strong><small>Created {new Date(key.created_at).toLocaleDateString()}</small></span></span></td><td><code className="key-prefix">{key.key_prefix}••••••••</code></td><td><div className="scope-list">{(JSON.parse(key.scopes_json) as string[]).map((scope) => <span key={scope}>{scope}</span>)}</div></td><td><StatusBadge value={key.status} /></td><td>{key.last_used_at ? new Date(key.last_used_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "Never"}</td><td>{key.expires_at ? new Date(key.expires_at).toLocaleDateString() : "Never"}</td><td><button className="icon-button danger-hover" type="button" onClick={() => revoke(key.id)} disabled={key.status !== "active"} aria-label={`Revoke ${key.name}`}><Trash2 size={16} /></button></td></tr>)}</tbody></table></div>

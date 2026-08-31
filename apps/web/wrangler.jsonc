@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "sentinel-edge-console",
+  "name": "sentinel-edge-console-development",
   "main": "vinext/server/fetch-handler",
   "compatibility_date": "2026-08-20",
   "compatibility_flags": ["nodejs_compat"],
@@ -10,9 +10,36 @@
     "binding": "ASSETS"
   },
   "vars": {
-    "GATEWAY_ORIGIN": "https://sentinel-edge-gateway.tharukamaduwantha62.workers.dev",
-    "NEXT_PUBLIC_GATEWAY_ORIGIN": "https://sentinel-edge-gateway.tharukamaduwantha62.workers.dev",
+    "GATEWAY_ORIGIN": "http://127.0.0.1:8787",
     "NEXT_PUBLIC_APP_NAME": "Sentinel Edge"
+  },
+  "env": {
+    "staging": {
+      "name": "sentinel-edge-console-staging",
+      "vars": {
+        "GATEWAY_ORIGIN": "https://sentinel-edge-gateway-staging.tharukamaduwantha62.workers.dev",
+        "NEXT_PUBLIC_APP_NAME": "Sentinel Edge"
+      },
+      "services": [
+        {
+          "binding": "GATEWAY_SERVICE",
+          "service": "sentinel-edge-gateway-staging"
+        }
+      ]
+    },
+    "production": {
+      "name": "sentinel-edge-console",
+      "vars": {
+        "GATEWAY_ORIGIN": "https://sentinel-edge-gateway-production.tharukamaduwantha62.workers.dev",
+        "NEXT_PUBLIC_APP_NAME": "Sentinel Edge"
+      },
+      "services": [
+        {
+          "binding": "GATEWAY_SERVICE",
+          "service": "sentinel-edge-gateway-production"
+        }
+      ]
+    }
   },
   "observability": {
     "enabled": true

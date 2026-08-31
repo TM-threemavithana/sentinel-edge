@@ -29,8 +29,9 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck && pnpm test
+      - run: pnpm --filter @sentinel/security-core build
 
   staging:
     needs: validate
@@ -39,7 +40,7 @@ jobs:
     timeout-minutes: 25
     environment: staging
     env:
-      NEXT_PUBLIC_GATEWAY_ORIGIN: "https://sentinel-edge-gateway-staging.tharukamaduwantha62.workers.dev"
+      GATEWAY_ORIGIN: "https://sentinel-edge-gateway-staging.tharukamaduwantha62.workers.dev"
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
@@ -51,13 +52,19 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm install --frozen-lockfile
       - name: Apply D1 migrations (staging)
-        run: pnpm --filter @sentinel/gateway db:migrate:remote --env staging
+        run: pnpm --filter @sentinel/gateway db:migrate:staging
       - name: Deploy gateway (staging)
-        run: pnpm --filter @sentinel/gateway run deploy --env staging
+        run: pnpm --filter @sentinel/gateway deploy:staging
       - name: Deploy console (staging)
-        run: pnpm --filter @sentinel/web run deploy
+        run: pnpm --filter @sentinel/web deploy:staging
+      - name: Verify staging health
+        run: |
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors \
+            https://sentinel-edge-gateway-staging.tharukamaduwantha62.workers.dev/health
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors \
+            https://sentinel-edge-console-staging.tharukamaduwantha62.workers.dev/login > /dev/null
 
   production:
     needs: validate
@@ -66,7 +73,7 @@ jobs:
     timeout-minutes: 25
     environment: production
     env:
-      NEXT_PUBLIC_GATEWAY_ORIGIN: "https://sentinel-edge-gateway.tharukamaduwantha62.workers.dev"
+      GATEWAY_ORIGIN: "https://sentinel-edge-gateway-production.tharukamaduwantha62.workers.dev"
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
@@ -78,10 +85,16 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm install --frozen-lockfile
       - name: Apply D1 migrations
-        run: pnpm --filter @sentinel/gateway db:migrate:remote --env production
+        run: pnpm --filter @sentinel/gateway db:migrate:production
       - name: Deploy gateway
-        run: pnpm --filter @sentinel/gateway run deploy --env production
+        run: pnpm --filter @sentinel/gateway deploy:production
       - name: Deploy console
-        run: pnpm --filter @sentinel/web run deploy
+        run: pnpm --filter @sentinel/web deploy:production
+      - name: Verify production health
+        run: |
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors \
+            https://sentinel-edge-gateway-production.tharukamaduwantha62.workers.dev/health
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors \
+            https://sentinel-edge-console.tharukamaduwantha62.workers.dev/login > /dev/null

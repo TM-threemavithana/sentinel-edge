@@ -114,6 +114,20 @@ input:focus, select:focus { outline: 0; border-color: var(--mint); box-shadow: 0
 .password-field button { position: absolute; right: 5px; top: 4px; width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 7px; background: transparent; cursor: pointer; }
 .login-submit { width: 100%; margin-top: 12px; min-height: 44px; }
 .form-error { margin: 2px 0; padding: 9px 11px; color: #a53d45; border-radius: 8px; background: var(--red-soft); font-size: 12px; }
+.login-back { width: fit-content; margin: -4px 0 10px; padding: 0; display: inline-flex; align-items: center; gap: 6px; color: var(--muted); border: 0; background: transparent; font-size: 12px; cursor: pointer; }
+.login-back:hover { color: var(--ink); }
+.mfa-setup-card { margin-bottom: 8px; padding: 16px; display: grid; gap: 12px; border: 1px solid #d8ded3; border-radius: 10px; background: #fff; }
+.mfa-qr { width: fit-content; padding: 8px; border: 1px solid #e3e7df; border-radius: 8px; background: #fff; }
+.mfa-setup-card strong { display: block; color: var(--ink); font-size: 13px; }
+.mfa-setup-card p, .field-help { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.mfa-setup-card details { color: var(--muted); font-size: 11px; }
+.mfa-setup-card summary { cursor: pointer; }
+.mfa-setup-card details code { margin-top: 8px; padding: 8px; display: block; overflow-wrap: anywhere; color: var(--ink); border-radius: 6px; background: #f2f4ef; letter-spacing: .08em; }
+.recovery-panel { display: grid; gap: 12px; }
+.recovery-codes { padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; border: 1px solid #d8ded3; border-radius: 9px; background: #fff; }
+.recovery-codes code { color: var(--ink); font-size: 13px; font-weight: 700; letter-spacing: .08em; }
+.recovery-copy { width: fit-content; display: inline-flex; align-items: center; gap: 7px; }
+.recovery-warning { margin: 0; color: #8b5a1f; font-size: 11px; }
 .sso-separator { position: relative; margin: 24px 0; border-top: 1px solid var(--line-soft); text-align: center; }
 .sso-separator span { position: relative; top: -8px; padding: 0 12px; color: #93a19d; background: white; font-size: 10px; text-transform: uppercase; letter-spacing: .09em; }
 .sso-button { width: 100%; border-color: var(--line); background: white; }

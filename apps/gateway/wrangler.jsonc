@@ -7,6 +7,34 @@
     "nodejs_compat"
   ],
   "workers_dev": true,
+  "vars": {
+    "ENVIRONMENT": "development",
+    "AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fast",
+    "AI_MODE": "async",
+    "SESSION_COOKIE": "sentinel_session_dev",
+    "SESSION_TTL_SECONDS": "28800",
+    "MAX_INSPECTION_BYTES": "1048576",
+    "FREE_TIER_MODE": "true",
+    "MFA_REQUIRED": "false",
+    "ALLOWED_ORIGINS": "http://localhost:3000,http://127.0.0.1:3000"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sentinel-edge-db",
+      "database_id": "dd113ba0-d8a6-4195-bf77-d9eb03157516",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "POLICY_CACHE",
+      "id": "e3cd15f9002945af98fc200fa8c7de7e"
+    }
+  ],
+  "ai": {
+    "binding": "AI"
+  },
   "durable_objects": {
     "bindings": [
       {
@@ -38,24 +66,51 @@
         "SESSION_TTL_SECONDS": "28800",
         "MAX_INSPECTION_BYTES": "1048576",
         "FREE_TIER_MODE": "true",
+        "MFA_REQUIRED": "true",
         "ALLOWED_ORIGINS": "https://sentinel-edge-console-staging.tharukamaduwantha62.workers.dev"
+      },
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "EDGE_COORDINATOR",
+            "class_name": "EdgeCoordinator"
+          }
+        ]
       },
       "d1_databases": [
         {
           "binding": "DB",
           "database_name": "sentinel-edge-db-staging",
-          "database_id": "STAGING_DB_ID_PLACEHOLDER",
+          "database_id": "ec8221d1-ea71-4c33-81d5-0f83fa144cb6",
           "migrations_dir": "migrations"
         }
       ],
       "kv_namespaces": [
         {
           "binding": "POLICY_CACHE",
-          "id": "STAGING_KV_ID_PLACEHOLDER"
+          "id": "1c6277858ac54784aaa68b24116fb1db"
         }
       ],
+      "r2_buckets": [],
       "ai": {
         "binding": "AI"
+      },
+      "queues": {
+        "producers": [
+          {
+            "binding": "ANALYSIS_QUEUE",
+            "queue": "sentinel-edge-analysis-staging"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "sentinel-edge-analysis-staging",
+            "max_batch_size": 10,
+            "max_batch_timeout": 5,
+            "max_retries": 3,
+            "dead_letter_queue": "sentinel-edge-analysis-staging-dlq"
+          }
+        ]
       }
     },
     "production": {
@@ -68,7 +123,16 @@
         "SESSION_TTL_SECONDS": "28800",
         "MAX_INSPECTION_BYTES": "1048576",
         "FREE_TIER_MODE": "true",
+        "MFA_REQUIRED": "true",
         "ALLOWED_ORIGINS": "https://sentinel-edge-console.tharukamaduwantha62.workers.dev"
+      },
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "EDGE_COORDINATOR",
+            "class_name": "EdgeCoordinator"
+          }
+        ]
       },
       "d1_databases": [
         {
@@ -84,8 +148,26 @@
           "id": "e3cd15f9002945af98fc200fa8c7de7e"
         }
       ],
+      "r2_buckets": [],
       "ai": {
         "binding": "AI"
+      },
+      "queues": {
+        "producers": [
+          {
+            "binding": "ANALYSIS_QUEUE",
+            "queue": "sentinel-edge-analysis"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "sentinel-edge-analysis",
+            "max_batch_size": 10,
+            "max_batch_timeout": 5,
+            "max_retries": 3,
+            "dead_letter_queue": "sentinel-edge-analysis-dlq"
+          }
+        ]
       }
     }
   }

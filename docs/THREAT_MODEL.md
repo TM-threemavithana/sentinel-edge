@@ -18,8 +18,8 @@ content is always untrusted—even when it appears inside a classification promp
 | Threat | Control |
 | --- | --- |
 | Stolen API key | One-time reveal, SHA-256 storage, scopes, expiry, instant revocation |
-| Password disclosure | PBKDF2-SHA-256 with per-user salt; HttpOnly opaque sessions |
-| Cross-site request forgery | SameSite=Strict cookies and Origin validation on mutations |
+| Password disclosure | PBKDF2-SHA-256 at the Workers-enforced 100,000-iteration ceiling with per-user salt; HttpOnly opaque sessions; OIDC recommended for real organizations |
+| Cross-site request forgery | SameSite=Lax cookies, CSRF tokens, and mandatory Origin validation on mutations |
 | Broken object authorization | Workspace ownership predicates on every management query |
 | SSRF | Admin-created public HTTPS upstream allowlist; private-address rejection |
 | Credential forwarding | Client auth, cookies, host, and Cloudflare headers stripped |
@@ -41,7 +41,8 @@ content is always untrusted—even when it appears inside a classification promp
 
 ## Required work before a real launch
 
-Replace local password login with OIDC or Cloudflare Access, add secret rotation,
-provider-specific response inspection, alert delivery, malware scanning for file
-uploads, tenant provisioning, legal retention review, load testing, and an
-independent security assessment.
+Add secret rotation, provider-specific response inspection, alert delivery,
+malware scanning for file uploads, tenant provisioning, legal retention review,
+load testing, and an independent security assessment. Built-in TOTP MFA removes
+password-only production access; larger organizations should still connect OIDC
+or Cloudflare Access for centralized identity lifecycle management.

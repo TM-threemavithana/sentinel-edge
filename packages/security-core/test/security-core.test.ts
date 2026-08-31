@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluatePolicies, inspectRequest, redactHeaders, redactJson } from "../src";
+import { evaluatePolicies, inspectRequest, isValidPolicyRegex, redactHeaders, redactJson } from "../src";
 import type { PolicyRule, RequestContext } from "../src";
 
 function context(bodyText: string): RequestContext {
@@ -65,6 +65,22 @@ describe("policy engine", () => {
       },
     ];
     expect(evaluatePolicies(rules, context("safe"), []).decision).toBe("allow");
+  });
+
+  it("evaluates historically catastrophic patterns with the linear-time matcher", () => {
+    const rules: PolicyRule[] = [{
+      id: "linear-regex",
+      name: "Linear regex",
+      enabled: true,
+      priority: 1,
+      action: "block",
+      conditions: [{ field: "body", operator: "matches", value: "^(a|aa)+$" }],
+    }];
+    expect(evaluatePolicies(rules, context(`${"a".repeat(100_000)}!`), []).decision).toBe("allow");
+  });
+
+  it("rejects expressions unsupported by RE2 semantics", () => {
+    expect(isValidPolicyRegex("^(a+)\\1$")).toBe(false);
   });
 });
 

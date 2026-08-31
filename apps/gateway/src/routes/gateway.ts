@@ -1,24 +1,38 @@
 import { Hono } from "hono";
 import { errorResponse, AppBindings, recordRequest, coordinator, headersRecord } from "../helpers";
 import { redactHeaders, redactBody } from "@sentinel/security-core";
-import { storeAnalysisReport, storeRequestArtifact } from "../artifacts";
+import { storeRequestArtifact } from "../artifacts";
 import type { RequestContext, ThreatSignal } from "@sentinel/security-core";
 import { evaluatePolicies, inspectRequest } from "@sentinel/security-core";
 import { classifyThreat, type AiClassification } from "../ai";
+import { authenticateApiKey } from "../auth";
+import { getPolicies } from "../policies";
+import { dispatchAnalysis } from "../analysis";
 
 
 type ClassificationResult = AiClassification;
-interface AnalysisMessage { requestEventId: string; requestId: string; workspaceId: string; redactedBody: string; path: string; method: string; deterministicSignals: ThreatSignal[]; }
 
 const gateway = new Hono<AppBindings>();
+
+gateway.use("*", async (c, next) => {
+  const principal = await authenticateApiKey(c.req.raw, c.env);
+  if (!principal) {
+    return errorResponse("unauthenticated", "A valid Sentinel API key is required", 401);
+  }
+  if (!principal.scopes.includes("gateway:invoke")) {
+    return errorResponse("insufficient_scope", "This API key cannot invoke the gateway", 403);
+  }
+  c.set("apiKey", principal);
+  await next();
+});
 
 gateway.all("/:upstreamId/*", async (c) => {
   const startedAt = Date.now();
   const requestId = crypto.randomUUID();
   const eventId = crypto.randomUUID();
-  const principal = c.get("apiKey")!;
+  const principal = c.get("apiKey");
 
-  const upstream = await c.env.DB.prepare("SELECT * FROM upstreams WHERE id = ? AND workspace_id = ?").bind(c.req.param("upstreamId"), principal.workspaceId).first<{
+  const upstream = await c.env.DB.prepare("SELECT * FROM upstreams WHERE id = ? AND workspace_id = ? AND status = 'active'").bind(c.req.param("upstreamId"), principal.workspaceId).first<{
     id: string;
     base_url: string;
     auth_header_name: string;
@@ -127,7 +141,7 @@ gateway.all("/:upstreamId/*", async (c) => {
     c.executionCtx.waitUntil(Promise.all([
       coordinator(c.env, principal.workspaceId).fetch("https://coordinator/counter/increment", { method: "POST", body: JSON.stringify({ decision: decision === "rate_limited" ? "rate_limited" : "blocked" }) }).then(() => undefined),
       storeRequestArtifact(c.env, { workspaceId: principal.workspaceId, requestEventId: eventId, requestId, method: context.method, path: context.path, headers: context.headers, body: bodyText }).then(() => undefined),
-      processAnalysis({ requestEventId: eventId, requestId, workspaceId: principal.workspaceId, redactedBody: redactBody(bodyText, context.contentType), path: context.path, method: context.method, deterministicSignals: signals }, c.env, precomputedAi).catch(e => console.error(JSON.stringify({ message: "analysis_failed", requestEventId: eventId, error: String(e) }))),
+      dispatchAnalysis({ requestEventId: eventId, requestId, workspaceId: principal.workspaceId, redactedBody: redactBody(bodyText, context.contentType).slice(0, 12_000), path: context.path, method: context.method, deterministicSignals: signals }, c.env, precomputedAi).catch(e => console.error(JSON.stringify({ message: "analysis_failed", requestEventId: eventId, error: String(e) }))),
     ]).then(() => undefined));
     return new Response(JSON.stringify({ error: { code: decision, message: evaluation.reason }, requestId }), { status, headers: { "content-type": "application/json", ...rateHeaders } });
   }
@@ -158,7 +172,7 @@ gateway.all("/:upstreamId/*", async (c) => {
   c.executionCtx.waitUntil(Promise.all([
     c.env.DB.prepare("UPDATE api_keys SET last_used_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").bind(principal.id).run(),
     coordinator(c.env, principal.workspaceId).fetch("https://coordinator/counter/increment", { method: "POST", body: JSON.stringify({ decision: "allowed" }) }),
-    processAnalysis({ requestEventId: eventId, requestId, workspaceId: principal.workspaceId, redactedBody: redactBody(bodyText, context.contentType), path: context.path, method: context.method, deterministicSignals: signals }, c.env, precomputedAi).catch(e => console.error(JSON.stringify({ message: "analysis_failed", requestEventId: eventId, error: String(e) }))),
+    dispatchAnalysis({ requestEventId: eventId, requestId, workspaceId: principal.workspaceId, redactedBody: redactBody(bodyText, context.contentType).slice(0, 12_000), path: context.path, method: context.method, deterministicSignals: signals }, c.env, precomputedAi).catch(e => console.error(JSON.stringify({ message: "analysis_failed", requestEventId: eventId, error: String(e) }))),
     ...(signals.length > 0 ? [storeRequestArtifact(c.env, { workspaceId: principal.workspaceId, requestEventId: eventId, requestId, method: context.method, path: context.path, headers: redactHeaders(context.headers), body: bodyText })] : []),
   ]).then(() => undefined));
 
@@ -167,26 +181,5 @@ gateway.all("/:upstreamId/*", async (c) => {
   for (const [key, value] of Object.entries(rateHeaders)) responseHeaders.set(key, value);
   return new Response(upstreamResponse.body, { status: upstreamResponse.status, headers: responseHeaders });
 });
-
-async function getPolicies(env: any, workspaceId: string) {
-  const cached = await env.POLICY_CACHE.get(workspaceId);
-  if (cached) return JSON.parse(cached);
-  const { results } = await env.DB.prepare("SELECT * FROM policies WHERE workspace_id = ? AND enabled = 1 ORDER BY priority ASC").bind(workspaceId).all();
-  const policies = results.map((r: any) => ({ ...r, conditions: JSON.parse(r.conditions), rateLimit: r.rate_limit ? JSON.parse(r.rate_limit) : undefined }));
-  await env.POLICY_CACHE.put(workspaceId, JSON.stringify(policies), { expirationTtl: 30 });
-  return policies;
-}
-
-async function processAnalysis(input: AnalysisMessage, env: any, precomputedClassification?: ClassificationResult): Promise<void> {
-  const classification = precomputedClassification ?? await classifyThreat(env, { method: input.method, path: input.path, redactedBody: input.redactedBody, deterministicSignals: input.deterministicSignals });
-  const report = { requestId: input.requestId, generatedAt: new Date().toISOString(), model: env.AI_MODEL, classification, deterministicSignals: input.deterministicSignals, handling: "Request content was redacted and truncated before analysis." };
-  const artifactKey = await storeAnalysisReport(env, { workspaceId: input.workspaceId, requestEventId: input.requestEventId, requestId: input.requestId, report });
-  await env.DB.prepare(
-    `INSERT INTO analysis_results (id, request_event_id, model, category, confidence, explanation, recommended_action, artifact_key)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(request_event_id) DO UPDATE SET
-       model = excluded.model, category = excluded.category, confidence = excluded.confidence,
-       explanation = excluded.explanation, recommended_action = excluded.recommended_action, artifact_key = excluded.artifact_key`,
-  ).bind(crypto.randomUUID(), input.requestEventId, env.AI_MODEL, classification.category, classification.confidence, classification.explanation, classification.recommendedAction, artifactKey).run();
-}
 
 export { gateway };

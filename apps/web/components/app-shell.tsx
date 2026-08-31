@@ -75,8 +75,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
         <div className="sidebar-brand"><Brand /><button className="icon-button mobile-only" type="button" onClick={() => setMenuOpen(false)} aria-label="Close navigation"><X size={18} /></button></div>
         <div className="workspace-switcher">
-          <span className="workspace-avatar">AC</span>
-          <span><small>Workspace</small><strong>{viewer?.workspaceName ?? "Acme AI Platform"}</strong></span>
+          <span className="workspace-avatar">{viewer?.workspaceName.slice(0, 2).toUpperCase() ?? "—"}</span>
+          <span><small>Workspace</small><strong>{viewer?.workspaceName ?? "Loading session…"}</strong></span>
         </div>
         <nav className="primary-nav" aria-label="Main navigation">
           <span className="nav-label">Monitor</span>
@@ -87,7 +87,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link className={active ? "active" : ""} href={item.href} key={item.href} onClick={() => setMenuOpen(false)}>
                 <Icon size={17} />
                 <span>{item.label}</span>
-                {item.label === "Requests" ? <em>12</em> : null}
               </Link>
             );
           })}
@@ -97,12 +96,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="security-state">
           <span className="pulse-dot" />
-          <div><strong>Gateway operational</strong><small>7 regions reporting</small></div>
+          <div><strong>{viewer ? "Session verified" : "Verifying session"}</strong><small>{viewer ? "Workspace access active" : "Waiting for authentication"}</small></div>
           <ShieldCheck size={18} />
         </div>
         <div className="sidebar-user">
-          <span className="user-avatar">{viewer?.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2) ?? "MC"}</span>
-          <span><strong>{viewer?.displayName ?? "Maya Chen"}</strong><small>{viewer?.role ?? "admin"}</small></span>
+          <span className="user-avatar">{viewer?.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2) ?? "—"}</span>
+          <span><strong>{viewer?.displayName ?? "Loading…"}</strong><small>{viewer?.role ?? "—"}</small></span>
           <button className="icon-button" type="button" onClick={signOut} aria-label="Sign out"><LogOut size={16} /></button>
         </div>
       </aside>
@@ -113,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="topbar-context"><small>Sentinel Edge</small><strong>{currentRoute?.[1] ?? "Console"}</strong></div>
           <Link className="command-search" href="/dashboard/requests" aria-label="Search gateway requests"><Search size={16} /><span>Search requests</span><kbd>⌘ K</kbd></Link>
           <div className="topbar-actions">
-            <span className="environment-pill"><i /> Production</span>
+            <span className="environment-pill"><i /> Authenticated console</span>
           </div>
         </header>
         <main className="console-main">{children}</main>

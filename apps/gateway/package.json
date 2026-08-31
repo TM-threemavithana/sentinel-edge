@@ -4,8 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "wrangler deploy --dry-run --outdir dist",
-    "deploy": "wrangler deploy",
+    "build": "wrangler deploy --dry-run --outdir dist --env=",
+    "build:staging": "wrangler deploy --dry-run --outdir dist/staging --env staging",
+    "build:production": "wrangler deploy --dry-run --outdir dist/production --env production",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:production": "wrangler deploy --env production",
     "dev": "wrangler dev --port 8787",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
@@ -13,13 +16,16 @@
     "test:coverage": "vitest run --coverage",
     "cf:typegen": "wrangler types",
     "db:migrate:local": "wrangler d1 migrations apply sentinel-edge-db --local",
-    "db:migrate:remote": "wrangler d1 migrations apply sentinel-edge-db --remote",
+    "db:migrate:staging": "wrangler d1 migrations apply sentinel-edge-db-staging --remote --env staging",
+    "db:migrate:production": "wrangler d1 migrations apply sentinel-edge-db --remote --env production",
     "db:seed:local": "wrangler d1 execute sentinel-edge-db --local --file=seed/seed.sql",
-    "db:seed:remote": "wrangler d1 execute sentinel-edge-db --remote --file=seed/seed.sql"
+    "db:admin:local": "node scripts/create-local-admin.mjs",
+    "db:admin:remote": "node scripts/create-remote-admin.mjs"
   },
   "dependencies": {
     "@sentinel/security-core": "workspace:*",
     "hono": "^4.9.6",
+    "jose": "^6.2.10",
     "zod": "^4.1.5"
   },
   "devDependencies": {

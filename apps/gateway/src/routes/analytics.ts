@@ -31,10 +31,38 @@ analytics.get("/overview", requireSession(), async (c) => {
         WHERE re.workspace_id = ? AND re.created_at >= ?
         GROUP BY je.value ORDER BY count DESC LIMIT 10`,
     ).bind(user.workspaceId, dayAgo),
+    c.env.DB.prepare(
+      `SELECT COUNT(*) AS active_policies
+         FROM policies WHERE workspace_id = ? AND enabled = 1`,
+    ).bind(user.workspaceId),
+    c.env.DB.prepare(
+      `SELECT request_id, method, path, country, risk_score, decision, latency_ms, created_at
+         FROM request_events WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 8`,
+    ).bind(user.workspaceId),
   ]);
-  const [summaryResult, seriesResult, topThreatsResult] = batchResults;
-  return c.json({ summary: summaryResult?.results[0] ?? {}, series: seriesResult?.results ?? [], topThreats: topThreatsResult?.results ?? [] });
+  const [summaryResult, seriesResult, topThreatsResult, policyResult, recentResult] = batchResults;
+  return c.json({
+    summary: summaryResult?.results[0] ?? {},
+    series: seriesResult?.results ?? [],
+    topThreats: topThreatsResult?.results ?? [],
+    recent: recentResult?.results ?? [],
+    capabilities: {
+      activePolicies: Number((policyResult?.results[0] as { active_policies?: unknown } | undefined)?.active_policies ?? 0),
+      aiEnabled: c.env.FREE_TIER_MODE !== "true",
+      artifactStorageEnabled: Boolean(c.env.ARTIFACTS),
+    },
+  });
 });
+
+analytics.get("/runtime", requireSession(), (c) => c.json({
+  environment: c.env.ENVIRONMENT,
+  freeTierMode: c.env.FREE_TIER_MODE === "true",
+  aiEnabled: c.env.FREE_TIER_MODE !== "true",
+  artifactStorageEnabled: Boolean(c.env.ARTIFACTS),
+  queueEnabled: Boolean(c.env.ANALYSIS_QUEUE),
+  policyCacheEnabled: Boolean(c.env.POLICY_CACHE),
+  coordinatorEnabled: Boolean(c.env.EDGE_COORDINATOR),
+}));
 
 analytics.get("/live", requireSession(), async (c) => {
   const res = await coordinator(c.env, c.get("user").workspaceId).fetch("https://coordinator/snapshot");

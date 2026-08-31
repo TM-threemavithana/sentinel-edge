@@ -3,7 +3,7 @@ import type { AppBindings } from "../helpers";
 import { errorResponse, requireSession } from "../helpers";
 import { writeAudit } from "../audit";
 import { invalidatePolicies } from "../policies";
-import { policySchema, policyPatchSchema } from "../validation";
+import { policySchema, policyPatchSchema, readJsonBody } from "../validation";
 
 const policies = new Hono<AppBindings>();
 
@@ -16,7 +16,9 @@ policies.get("/", requireSession(), async (c) => {
 });
 
 policies.post("/", requireSession(["admin", "analyst"]), async (c) => {
-  const parsed = policySchema.safeParse(await c.req.json().catch(() => null));
+  const body = await readJsonBody(c.req.raw);
+  if (!body.success && body.reason === "too_large") return errorResponse("payload_too_large", "Management request body exceeds 64 KiB", 413);
+  const parsed = policySchema.safeParse(body.success ? body.data : null);
   if (!parsed.success) return errorResponse("invalid_input", parsed.error.issues[0]?.message ?? "Invalid policy", 422);
   const user = c.get("user");
   const id = crypto.randomUUID();
@@ -50,7 +52,9 @@ policies.patch("/:id", requireSession(["admin", "analyst"]), async (c) => {
        FROM policies WHERE id = ? AND workspace_id = ?`,
   ).bind(c.req.param("id"), user.workspaceId).first<Record<string, unknown>>();
   if (!current) return errorResponse("not_found", "Policy not found", 404);
-  const patch = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req.raw);
+  if (!body.success && body.reason === "too_large") return errorResponse("payload_too_large", "Management request body exceeds 64 KiB", 413);
+  const patch = body.success ? body.data : null;
   const parsed = policyPatchSchema.safeParse({ ...(patch as object), id: c.req.param("id") });
   if (!parsed.success) return errorResponse("invalid_input", parsed.error.issues[0]?.message ?? "Invalid policy", 422);
   const merged = policySchema.parse({

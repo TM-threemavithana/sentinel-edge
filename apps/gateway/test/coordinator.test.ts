@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 
 // Minimal mock of DurableObjectState storage
 function createMockStorage() {
@@ -115,6 +115,27 @@ describe("EdgeCoordinator", () => {
       await coordinator.alarm();
       const presence = await storage.list({ prefix: "presence:" });
       expect(presence.size).toBe(0);
+    });
+
+    it("preserves long rate-limit windows until their configured expiry", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-08-31T00:00:00.000Z"));
+      try {
+        await coordinator.fetch(new Request("https://coordinator/rate-limit", {
+          method: "POST",
+          body: JSON.stringify({ key: "daily-key", limit: 100, windowSeconds: 86_400 }),
+        }));
+
+        vi.advanceTimersByTime(11 * 60 * 1_000);
+        await coordinator.alarm();
+        expect((await storage.list({ prefix: "rate:" })).size).toBe(1);
+
+        vi.advanceTimersByTime(24 * 60 * 60 * 1_000);
+        await coordinator.alarm();
+        expect((await storage.list({ prefix: "rate:" })).size).toBe(0);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

@@ -6,6 +6,7 @@ import type {
   ThreatSeverity,
   ThreatSignal,
 } from "./types";
+import { RE2JS } from "re2js";
 
 const SEVERITY_RANK: Record<ThreatSeverity, number> = {
   low: 0,
@@ -19,13 +20,30 @@ function includesValue(actual: string, expected: string | string[]): boolean {
   return values.some((value) => value.toLowerCase() === actual.toLowerCase());
 }
 
-function safeRegex(pattern: string): RegExp | null {
+const regexCache = new Map<string, RE2JS>();
+const MAX_REGEX_CACHE_ENTRIES = 256;
+const MAX_REGEX_PROGRAM_SIZE = 1_000;
+
+function compileSafeRegex(pattern: string): RE2JS | null {
   if (pattern.length > 256) return null;
+  const cached = regexCache.get(pattern);
+  if (cached) return cached;
   try {
-    return new RegExp(pattern, "i");
+    const compiled = RE2JS.compile(pattern, RE2JS.CASE_INSENSITIVE);
+    if (compiled.programSize() > MAX_REGEX_PROGRAM_SIZE) return null;
+    if (regexCache.size >= MAX_REGEX_CACHE_ENTRIES) {
+      const oldest = regexCache.keys().next().value;
+      if (oldest !== undefined) regexCache.delete(oldest);
+    }
+    regexCache.set(pattern, compiled);
+    return compiled;
   } catch {
     return null;
   }
+}
+
+export function isValidPolicyRegex(pattern: string): boolean {
+  return compileSafeRegex(pattern) !== null;
 }
 
 function conditionMatches(
@@ -41,7 +59,7 @@ function conditionMatches(
     case "path": {
       if (condition.operator === "equals") return context.path === condition.value;
       if (condition.operator === "starts_with") return context.path.startsWith(condition.value);
-      return safeRegex(condition.value)?.test(context.path) ?? false;
+      return compileSafeRegex(condition.value)?.test(context.path) ?? false;
     }
     case "header": {
       const actual = context.headers[condition.key.toLowerCase()];
@@ -63,7 +81,7 @@ function conditionMatches(
       if (condition.operator === "contains") {
         return context.bodyText.toLowerCase().includes(condition.value.toLowerCase());
       }
-      return safeRegex(condition.value)?.test(context.bodyText) ?? false;
+      return compileSafeRegex(condition.value)?.test(context.bodyText) ?? false;
     }
   }
 }

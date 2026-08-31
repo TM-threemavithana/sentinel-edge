@@ -13,13 +13,17 @@ function cookieValue(request: Request, name: string): string | null {
   return null;
 }
 
-export async function authenticateSession(request: Request, env: Env): Promise<SessionUser | null> {
+export async function authenticateSession(
+  request: Request,
+  env: Env,
+  options: { allowUnverified?: boolean } = {},
+): Promise<SessionUser | null> {
   const token = cookieValue(request, env.SESSION_COOKIE);
   if (!token) return null;
   const tokenHash = await sha256(token);
   const row = await env.DB.prepare(
     `SELECT s.id AS session_id, u.id, u.email, u.display_name, m.workspace_id,
-            w.name AS workspace_name, m.role
+            w.name AS workspace_name, m.role, s.mfa_verified
        FROM sessions s
        JOIN users u ON u.id = s.user_id AND u.status = 'active'
        JOIN memberships m ON m.user_id = u.id AND m.workspace_id = s.workspace_id
@@ -36,9 +40,11 @@ export async function authenticateSession(request: Request, env: Env): Promise<S
       workspace_id: string;
       workspace_name: string;
       role: Role;
+      mfa_verified: number;
     }>();
 
   if (!row) return null;
+  if (env.MFA_REQUIRED === "true" && row.mfa_verified !== 1 && !options.allowUnverified) return null;
   return {
     id: row.id,
     email: row.email,
@@ -55,6 +61,7 @@ export async function createSession(
   env: Env,
   userId: string,
   workspaceId: string,
+  mfaVerified = true,
 ): Promise<{ cookie: string; sessionId: string }> {
   const token = randomToken(32);
   const tokenHash = await sha256(token);
@@ -66,16 +73,15 @@ export async function createSession(
   const userAgent = request.headers.get("user-agent")?.slice(0, 512) ?? "unknown";
 
   await env.DB.prepare(
-    `INSERT INTO sessions (id, token_hash, user_id, workspace_id, expires_at, ip_hash, user_agent)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO sessions (id, token_hash, user_id, workspace_id, expires_at, ip_hash, user_agent, mfa_verified)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   )
-    .bind(sessionId, tokenHash, userId, workspaceId, expiresAt, ipHash, userAgent)
+    .bind(sessionId, tokenHash, userId, workspaceId, expiresAt, ipHash, userAgent, mfaVerified ? 1 : 0)
     .run();
 
   const isDev = env.ENVIRONMENT === "development";
   const secure = isDev ? "" : "; Secure";
-  const sameSite = isDev ? "Lax" : "None";
-  return { cookie: `${env.SESSION_COOKIE}=${encodeURIComponent(token)}; HttpOnly; Path=/; Max-Age=${ttl}; SameSite=${sameSite}${secure}`, sessionId };
+  return { cookie: `${env.SESSION_COOKIE}=${encodeURIComponent(token)}; HttpOnly; Path=/; Max-Age=${ttl}; SameSite=Lax${secure}`, sessionId };
 }
 
 export async function destroySession(request: Request, env: Env): Promise<string> {
@@ -85,8 +91,7 @@ export async function destroySession(request: Request, env: Env): Promise<string
   }
   const isDev = env.ENVIRONMENT === "development";
   const secure = isDev ? "" : "; Secure";
-  const sameSite = isDev ? "Lax" : "None";
-  return `${env.SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=0${secure}`;
+  return `${env.SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
 }
 
 export async function authenticateApiKey(request: Request, env: Env): Promise<ApiKeyPrincipal | null> {

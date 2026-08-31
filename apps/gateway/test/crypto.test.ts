@@ -35,4 +35,16 @@ describe("upstream validation", () => {
   it("accepts public HTTPS origins", () => {
     expect(upstreamSchema.safeParse({ name: "production", baseUrl: "https://api.example.com" }).success).toBe(true);
   });
+
+  it.each(["host", "content-length", "cookie", "cf-connecting-ip", "x-sentinel-key"])(
+    "rejects unsafe upstream authentication header %s",
+    (authHeaderName) => {
+      expect(upstreamSchema.safeParse({ name: "unsafe", baseUrl: "https://api.example.com", authHeaderName }).success).toBe(false);
+    },
+  );
+
+  it("rejects upstream URLs containing a query or fragment", () => {
+    expect(upstreamSchema.safeParse({ name: "unsafe", baseUrl: "https://api.example.com?token=secret" }).success).toBe(false);
+    expect(upstreamSchema.safeParse({ name: "unsafe", baseUrl: "https://api.example.com#fragment" }).success).toBe(false);
+  });
 });

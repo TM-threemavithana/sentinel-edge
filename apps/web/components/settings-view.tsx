@@ -14,6 +14,16 @@ interface Upstream {
   created_at: string;
 }
 
+interface RuntimeStatus {
+  environment: string;
+  freeTierMode: boolean;
+  aiEnabled: boolean;
+  artifactStorageEnabled: boolean;
+  queueEnabled: boolean;
+  policyCacheEnabled: boolean;
+  coordinatorEnabled: boolean;
+}
+
 const bindings = [
   { label: "Structured data", value: "D1", note: "Policies, identities, events", icon: Database, tone: "blue" },
   { label: "Artifacts", value: "R2", note: "Redacted samples & reports", icon: Box, tone: "amber" },
@@ -24,19 +34,23 @@ const bindings = [
 ];
 
 export function SettingsView() {
-  const [upstreams, setUpstreams] = useState<Upstream[]>([
-    { id: "ups_echo", name: "Safe echo service", base_url: "https://httpbin.org", timeout_ms: 15000, status: "active", created_at: new Date().toISOString() },
-  ]);
+  const [upstreams, setUpstreams] = useState<Upstream[]>([]);
+  const [runtime, setRuntime] = useState<RuntimeStatus | null>(null);
   const [message, setMessage] = useState("");
-  const [demoMode, setDemoMode] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   async function load() {
     try {
-      const { data } = await apiFetch<{ data: Upstream[] }>("/v1/upstreams");
+      const [{ data }, runtimeStatus] = await Promise.all([
+        apiFetch<{ data: Upstream[] }>("/v1/upstreams"),
+        apiFetch<RuntimeStatus>("/v1/analytics/runtime"),
+      ]);
       setUpstreams(data);
-      setDemoMode(false);
-    } catch {
-      setDemoMode(true);
+      setRuntime(runtimeStatus);
+      setLoadError("");
+    } catch (cause) {
+      setRuntime(null);
+      setLoadError(cause instanceof Error ? cause.message : "Runtime configuration is unavailable");
     }
   }
 
@@ -66,23 +80,24 @@ export function SettingsView() {
 
   return (
     <>
-      <PageHeader eyebrow="Workspace configuration" title="Gateway settings" description="Manage trusted destinations, Cloudflare bindings, retention, and inspection behavior." actions={<span className={`data-mode ${demoMode ? "demo" : "live"}`}><i /> {demoMode ? "Preview configuration" : "Live configuration"}</span>} />
-      {message ? <div className="inline-notice">{message}</div> : null}
+      <PageHeader eyebrow="Workspace configuration" title="Gateway settings" description="Manage trusted destinations, Cloudflare bindings, retention, and inspection behavior." actions={<span className={`data-mode ${runtime ? "live" : "demo"}`}><i /> {runtime ? `Live ${runtime.environment}` : "Configuration unavailable"}</span>} />
+      {loadError ? <div className="inline-notice error" role="alert">{loadError}. Refresh after the gateway recovers.</div> : null}
+      {message ? <div className="inline-notice" role="status" aria-live="polite">{message}</div> : null}
       <div className="settings-grid">
         <section className="panel settings-section upstream-section">
           <div className="panel-heading"><div><h2>Trusted upstreams</h2><p>Only registered public HTTPS origins can receive gateway traffic.</p></div><ServerCog size={19} /></div>
           <div className="upstream-list">{upstreams.map((upstream) => <article key={upstream.id}><span className="upstream-icon"><Cloud size={18} /></span><div><strong>{upstream.name}</strong><code>{upstream.base_url}</code></div><span><small>{upstream.timeout_ms / 1000}s timeout</small><StatusBadge value={upstream.status} /></span></article>)}</div>
           {upstreams.length === 0 ? <div className="table-empty compact-empty"><Cloud size={22} /><strong>No trusted upstreams</strong><span>Register a destination before routing gateway traffic.</span></div> : null}
-          <form className="upstream-form" onSubmit={createUpstream}><h3><CirclePlus size={17} /> Add upstream</h3><div className="form-grid"><label>Name<input name="name" required minLength={2} placeholder="OpenAI production" /></label><label>HTTPS base URL<input name="baseUrl" required type="url" placeholder="https://api.example.com" /></label></div><div className="form-grid"><label>Bearer credential<input name="authValue" type="password" autoComplete="off" placeholder="Optional; encrypted at rest" /></label><label>Timeout<input name="timeoutMs" type="number" min="1000" max="120000" defaultValue="30000" /></label></div><button className="button secondary" type="submit">Register upstream</button></form>
+          <form className="upstream-form" onSubmit={createUpstream}><h3><CirclePlus size={17} /> Add upstream</h3><div className="form-grid"><label>Name<input name="name" required minLength={2} placeholder="OpenAI production" /></label><label>HTTPS base URL<input name="baseUrl" required type="url" placeholder="https://api.example.com" /></label></div><div className="form-grid"><label>Bearer credential<input name="authValue" type="password" autoComplete="off" placeholder="Optional; encrypted at rest" /></label><label>Timeout<input name="timeoutMs" type="number" min="1000" max="120000" defaultValue="30000" /></label></div><button className="button secondary" type="submit" disabled={!runtime}>Register upstream</button></form>
         </section>
         <section className="panel settings-section runtime-section">
           <div className="panel-heading"><div><h2>Cloudflare runtime</h2><p>Resource bindings used by the production gateway.</p></div><span className="cf-mark">CF</span></div>
-          <div className="binding-grid">{bindings.map((binding) => { const Icon = binding.icon; return <article key={binding.value}><span className={`binding-icon ${binding.tone}`}><Icon size={17} /></span><div><small>{binding.label}</small><strong>{binding.value}</strong><p>{binding.note}</p></div><i /></article>; })}</div>
+          <div className="binding-grid">{bindings.map((binding) => { const Icon = binding.icon; const enabled = binding.value === "R2" ? runtime?.artifactStorageEnabled : binding.value === "Workers AI" ? runtime?.aiEnabled : binding.value === "Queues" ? runtime?.queueEnabled : binding.value === "KV" ? runtime?.policyCacheEnabled : binding.value === "Durable Objects" ? runtime?.coordinatorEnabled : Boolean(runtime); return <article key={binding.value}><span className={`binding-icon ${binding.tone}`}><Icon size={17} /></span><div><small>{binding.label}</small><strong>{binding.value}</strong><p>{enabled === undefined ? "Status unavailable" : enabled ? binding.note : "Disabled in this environment"}</p></div><i className={enabled ? "" : "disabled"} /></article>; })}</div>
         </section>
         <section className="panel settings-section inspection-settings">
           <div className="panel-heading"><div><h2>Inspection controls</h2><p>Safe defaults loaded from Worker environment variables.</p></div></div>
-          <div className="inspection-control"><span><strong>Asynchronous AI enrichment</strong><small>Classify redacted samples through Workers AI without adding upstream latency.</small></span><StatusBadge value="active" /></div>
-          <div className="inspection-control"><span><strong>Store blocked request samples</strong><small>Save redacted bodies in R2 for 30 days with checksum metadata.</small></span><StatusBadge value="active" /></div>
+          <div className="inspection-control"><span><strong>Asynchronous AI enrichment</strong><small>Classify redacted samples through Workers AI without adding upstream latency.</small></span><StatusBadge value={runtime?.aiEnabled ? "active" : "disabled"} /></div>
+          <div className="inspection-control"><span><strong>Store blocked request samples</strong><small>Save redacted bodies in R2 with checksum metadata.</small></span><StatusBadge value={runtime?.artifactStorageEnabled ? "active" : "disabled"} /></div>
           <div className="inspection-control"><span><strong>Fail closed on oversized payloads</strong><small>Reject bodies larger than the one-megabyte inspection ceiling.</small></span><StatusBadge value="active" /></div>
         </section>
         <section className="panel settings-section deployment-card">

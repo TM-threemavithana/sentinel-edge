@@ -37,7 +37,7 @@ export async function hmacSha256(secret: string, value: string): Promise<string>
   return toBase64Url(new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(value))));
 }
 
-export async function hashPassword(password: string, iterations = 120_000): Promise<string> {
+export async function hashPassword(password: string, iterations = 100_000): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, [
     "deriveBits",

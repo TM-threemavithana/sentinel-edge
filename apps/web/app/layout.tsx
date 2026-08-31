@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://sentinel-edge.example.com"),
+  metadataBase: new URL("https://sentinel-edge-console.tharukamaduwantha62.workers.dev"),
   title: {
     default: "Sentinel Edge — AI & API Security Gateway",
     template: "%s · Sentinel Edge",

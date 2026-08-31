@@ -16,6 +16,7 @@ export async function storeRequestArtifact(
   },
 ): Promise<string> {
   if (env.FREE_TIER_MODE === "true") return "";
+  if (!env.ARTIFACTS) throw new Error("R2 artifact storage is not configured");
   const key = `${input.workspaceId}/requests/${new Date().toISOString().slice(0, 10)}/${input.requestId}.json`;
   const document = JSON.stringify(
     {
@@ -39,7 +40,12 @@ export async function storeRequestArtifact(
     env.DB.prepare(
       `INSERT INTO artifact_metadata
         (id, workspace_id, object_key, kind, content_type, size_bytes, sha256, request_event_id, expires_at)
-       VALUES (?, ?, ?, 'request_sample', 'application/json', ?, ?, ?, datetime('now', '+${input.retentionDays || 30} days'))`,
+       VALUES (?, ?, ?, 'request_sample', 'application/json', ?, ?, ?, datetime('now', '+${input.retentionDays || 30} days'))
+       ON CONFLICT(object_key) DO UPDATE SET
+         size_bytes = excluded.size_bytes,
+         sha256 = excluded.sha256,
+         request_event_id = excluded.request_event_id,
+         expires_at = excluded.expires_at`,
     ).bind(crypto.randomUUID(), input.workspaceId, key, bytes.byteLength, checksum, input.requestEventId),
     env.DB.prepare("UPDATE request_events SET artifact_key = ? WHERE id = ?").bind(key, input.requestEventId),
   ]);
@@ -57,6 +63,7 @@ export async function storeAnalysisReport(
   },
 ): Promise<string> {
   if (env.FREE_TIER_MODE === "true") return "";
+  if (!env.ARTIFACTS) throw new Error("R2 artifact storage is not configured");
   const key = `${input.workspaceId}/analysis/${new Date().toISOString().slice(0, 10)}/${input.requestId}.json`;
   const bytes = new TextEncoder().encode(JSON.stringify(input.report, null, 2));
   const checksum = await sha256(bytes);
@@ -67,7 +74,12 @@ export async function storeAnalysisReport(
   await env.DB.prepare(
     `INSERT INTO artifact_metadata
       (id, workspace_id, object_key, kind, content_type, size_bytes, sha256, request_event_id, expires_at)
-     VALUES (?, ?, ?, 'analysis_report', 'application/json', ?, ?, ?, datetime('now', '+${input.retentionDays || 30} days'))`,
+     VALUES (?, ?, ?, 'analysis_report', 'application/json', ?, ?, ?, datetime('now', '+${input.retentionDays || 30} days'))
+     ON CONFLICT(object_key) DO UPDATE SET
+       size_bytes = excluded.size_bytes,
+       sha256 = excluded.sha256,
+       request_event_id = excluded.request_event_id,
+       expires_at = excluded.expires_at`,
   )
     .bind(crypto.randomUUID(), input.workspaceId, key, bytes.byteLength, checksum, input.requestEventId)
     .run();

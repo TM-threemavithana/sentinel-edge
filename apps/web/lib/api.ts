@@ -8,15 +8,7 @@ export class ApiError extends Error {
   }
 }
 
-function getGatewayOrigin(): string {
-  // Use direct literal for static replacement by the bundler
-  const origin = process.env.NEXT_PUBLIC_GATEWAY_ORIGIN;
-  if (!origin) {
-    if (process.env.NODE_ENV === "development") return "http://127.0.0.1:8787";
-    throw new Error("NEXT_PUBLIC_GATEWAY_ORIGIN must be set in production");
-  }
-  return origin;
-}
+const API_BASE = "/api/backend";
 
 let csrfToken: string | null = null;
 
@@ -32,7 +24,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   if (csrfToken && init?.method && !["GET", "HEAD", "OPTIONS"].includes(init.method)) {
     headers["x-csrf-token"] = csrfToken;
   }
-  const response = await fetch(`${getGatewayOrigin()}${path}`, {
+  const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers,
     credentials: "include",

@@ -3,7 +3,7 @@ import type { AppBindings } from "../helpers";
 import { errorResponse, requireSession } from "../helpers";
 import { randomToken, sha256 } from "../crypto";
 import { writeAudit } from "../audit";
-import { apiKeySchema } from "../validation";
+import { apiKeySchema, readJsonBody } from "../validation";
 
 const apiKeys = new Hono<AppBindings>();
 
@@ -16,7 +16,9 @@ apiKeys.get("/", requireSession(), async (c) => {
 });
 
 apiKeys.post("/", requireSession(["admin"]), async (c) => {
-  const parsed = apiKeySchema.safeParse(await c.req.json().catch(() => null));
+  const body = await readJsonBody(c.req.raw);
+  if (!body.success && body.reason === "too_large") return errorResponse("payload_too_large", "Management request body exceeds 64 KiB", 413);
+  const parsed = apiKeySchema.safeParse(body.success ? body.data : null);
   if (!parsed.success) return errorResponse("invalid_input", parsed.error.issues[0]?.message ?? "Invalid API key", 422);
   const user = c.get("user");
   const id = crypto.randomUUID();

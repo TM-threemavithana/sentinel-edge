@@ -1,6 +1,6 @@
 import type { Role, ThreatSignal } from "@sentinel/security-core";
 import type { Env } from "./env";
-import type { SessionUser } from "./types";
+import type { ApiKeyPrincipal, SessionUser } from "./types";
 import { authenticateSession, hasRole } from "./auth";
 import { hmacSha256 } from "./crypto";
 
@@ -9,17 +9,17 @@ export type AppBindings = {
   Variables: {
     requestId: string;
     user: SessionUser;
-    apiKey?: { id: string; workspaceId: string };
+    apiKey: ApiKeyPrincipal;
   };
 };
 
 export const DUMMY_PASSWORD_HASH =
-  "pbkdf2$120000$SwRxgVG_lqKA00TyfbX1bQ$PGrFNsT9VquFZPxRd3ppXgb3lT8z9XnEIJbGDaip9XY";
+  "pbkdf2$100000$SwRxgVG_lqKA00TyfbX1bQ$PGrFNsT9VquFZPxRd3ppXgb3lT8z9XnEIJbGDaip9XY";
 
 export function errorResponse(
   code: string,
   message: string,
-  status: 400 | 401 | 403 | 404 | 409 | 413 | 422 | 429 | 500 | 502 | 504,
+  status: 400 | 401 | 403 | 404 | 409 | 413 | 422 | 429 | 500 | 502 | 503 | 504,
 ): Response {
   return Response.json({ error: { code, message } }, { status });
 }

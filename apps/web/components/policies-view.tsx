@@ -18,25 +18,18 @@ interface Policy {
   updated_at: string;
 }
 
-const SAMPLE: Policy[] = [
-  { id: "pol_prompt", name: "Block prompt injection", description: "Reject instruction override and system prompt extraction attempts.", priority: 10, action: "block", conditions_json: '[{"field":"threat","operator":"equals","value":"prompt_injection"}]', rate_limit_json: null, enabled: 1, version: 3, updated_at: new Date().toISOString() },
-  { id: "pol_critical", name: "Block critical application threats", description: "Stop SQL injection, SSRF, traversal, and credential exposure.", priority: 20, action: "block", conditions_json: '[{"field":"severity","operator":"at_least","value":"critical"}]', rate_limit_json: null, enabled: 1, version: 2, updated_at: new Date().toISOString() },
-  { id: "pol_chat", name: "Chat completion budget", description: "Apply a per-key request ceiling to chat workloads.", priority: 100, action: "allow", conditions_json: '[{"field":"path","operator":"starts_with","value":"/v1/chat"}]', rate_limit_json: '{"requests":120,"windowSeconds":60,"keyBy":"api_key"}', enabled: 1, version: 1, updated_at: new Date().toISOString() },
-  { id: "pol_geo", name: "Sensitive route geo challenge", description: "Challenge requests to management routes from outside approved regions.", priority: 150, action: "challenge", conditions_json: '[{"field":"path","operator":"starts_with","value":"/admin"}]', rate_limit_json: null, enabled: 0, version: 1, updated_at: new Date().toISOString() },
-];
-
 export function PoliciesView() {
-  const [policies, setPolicies] = useState(SAMPLE);
+  const [policies, setPolicies] = useState<Policy[]>([]);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const [demoMode, setDemoMode] = useState(true);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     apiFetch<{ data: Policy[] }>("/v1/policies").then(({ data }) => {
       setPolicies(data);
-      setDemoMode(false);
-    }).catch(() => setDemoMode(true));
+      setLoaded(true);
+    }).catch((cause) => setMessage(cause instanceof Error ? cause.message : "Live policies are unavailable"));
   }, []);
 
   async function toggle(policy: Policy) {
@@ -78,9 +71,9 @@ export function PoliciesView() {
 
   return (
     <>
-      <PageHeader eyebrow="Enforcement" title="Policy engine" description="Define ordered, tenant-aware rules that are evaluated before upstream traffic is released." actions={<><span className={`data-mode ${demoMode ? "demo" : "live"}`}><i /> {demoMode ? "Sample policies" : "Live configuration"}</span><button className="button primary" type="button" onClick={() => setBuilderOpen(true)}><CirclePlus size={16} /> New policy</button></>} />
-      <section className="policy-summary"><article><ShieldCheck size={20} /><span><strong>{policies.filter((policy) => policy.enabled === 1).length} active policies</strong><small>All changes cached globally in under 60 seconds</small></span></article><article><Sparkles size={20} /><span><strong>Workers AI enrichment</strong><small>Asynchronous classification and report generation enabled</small></span><StatusBadge value="active" /></article></section>
-      {message ? <div className="inline-notice">{message}</div> : null}
+      <PageHeader eyebrow="Enforcement" title="Policy engine" description="Define ordered, tenant-aware rules that are evaluated before upstream traffic is released." actions={<><span className={`data-mode ${loaded ? "live" : "demo"}`}><i /> {loaded ? "Live configuration" : "Configuration unavailable"}</span><button className="button primary" type="button" onClick={() => setBuilderOpen(true)} disabled={!loaded}><CirclePlus size={16} /> New policy</button></>} />
+      <section className="policy-summary"><article><ShieldCheck size={20} /><span><strong>{policies.filter((policy) => policy.enabled === 1).length} active policies</strong><small>Policy changes propagate through the edge cache</small></span></article><article><Sparkles size={20} /><span><strong>Deterministic inspection</strong><small>Policy enforcement does not depend on model availability</small></span><StatusBadge value="active" /></article></section>
+      {message ? <div className="inline-notice" role="status" aria-live="polite">{message}</div> : null}
       <section className="panel policy-list">
         <div className="policy-list-head"><span>Order</span><span>Policy</span><span>Match</span><span>Action</span><span>Version</span><span>State</span></div>
         {policies.map((policy, index) => { const conditions = JSON.parse(policy.conditions_json) as Array<{ field: string; operator: string; value: string }>; return <article className={policy.enabled === 1 ? "" : "disabled"} key={policy.id}><span className="policy-order"><b>{index + 1}</b><small>Priority {policy.priority}</small></span><span className="policy-name"><strong>{policy.name}</strong><small>{policy.description}</small></span><span className="policy-condition"><code>{conditions[0]?.field}</code><small>{conditions[0]?.operator.replaceAll("_", " ")} {String(conditions[0]?.value)}</small>{policy.rate_limit_json ? <em>rate limit</em> : null}</span><span><StatusBadge value={policy.action} /></span><span className="mono">v{policy.version}</span><span><button type="button" className={`toggle ${policy.enabled === 1 ? "on" : ""}`} onClick={() => toggle(policy)} aria-label={`${policy.enabled === 1 ? "Disable" : "Enable"} ${policy.name}`} aria-pressed={policy.enabled === 1}><i /></button></span></article>; })}

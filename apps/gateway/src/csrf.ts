@@ -1,39 +1,25 @@
-import { randomToken } from "./crypto";
+import { hmacSha256, randomToken } from "./crypto";
 
-const CSRF_COOKIE = "__sentinel_csrf";
 const CSRF_HEADER = "x-csrf-token";
 
-export function generateCsrfCookie(isDev: boolean): { token: string; cookie: string } {
-  const token = randomToken(32);
-  const secure = isDev ? "" : "; Secure";
-  const sameSite = isDev ? "Lax" : "None";
-  return {
-    token,
-    cookie: `${CSRF_COOKIE}=${token}; HttpOnly; Path=/; SameSite=${sameSite}${secure}; Max-Age=28800`,
-  };
+export async function generateCsrfToken(secret: string): Promise<string> {
+  const nonce = randomToken(32);
+  const signature = await hmacSha256(secret, `csrf:${nonce}`);
+  return `${nonce}.${signature}`;
 }
 
-function getCookieValue(request: Request, name: string): string | null {
-  const cookie = request.headers.get("cookie");
-  if (!cookie) return null;
-  for (const part of cookie.split(";")) {
-    const [key, ...value] = part.trim().split("=");
-    if (key === name) return decodeURIComponent(value.join("="));
-  }
-  return null;
-}
-
-export function validateCsrf(request: Request): boolean {
+export async function validateCsrf(request: Request, secret: string): Promise<boolean> {
   if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return true;
-  const cookieToken = getCookieValue(request, CSRF_COOKIE);
   const headerToken = request.headers.get(CSRF_HEADER);
-  if (!cookieToken || !headerToken) return false;
-  if (cookieToken.length !== headerToken.length) return false;
+  if (!headerToken || headerToken.length !== 87) return false;
+  const [nonce, suppliedSignature, extra] = headerToken.split(".");
+  if (!nonce || !suppliedSignature || extra || nonce.length !== 43 || suppliedSignature.length !== 43) return false;
+  const expectedSignature = await hmacSha256(secret, `csrf:${nonce}`);
   let diff = 0;
-  for (let i = 0; i < cookieToken.length; i++) {
-    diff |= cookieToken.charCodeAt(i) ^ headerToken.charCodeAt(i);
+  for (let i = 0; i < expectedSignature.length; i++) {
+    diff |= expectedSignature.charCodeAt(i) ^ suppliedSignature.charCodeAt(i);
   }
   return diff === 0;
 }
 
-export { CSRF_COOKIE, CSRF_HEADER };
+export { CSRF_HEADER };
