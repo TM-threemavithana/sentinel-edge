@@ -29,6 +29,24 @@ engine, tenant-aware rate limits, and asynchronous Workers AI classification.
 - Analytics, request explorer, protected AI demo, policy builder, API keys, audit, and settings views
 - Vitest suites, strict TypeScript, CI, deployment workflow, runbook, and threat model
 
+## Product screenshots
+
+### Live threat posture
+
+![Sentinel Edge live threat posture dashboard](apps/web/public/screenshots/dashboard-overview.jpg)
+
+### Protected AI demonstration
+
+![Protected AI chatbot showing allowed and blocked requests](apps/web/public/screenshots/protected-ai-demo.jpg)
+
+### Audited request decisions
+
+![Live request explorer showing allowed and blocked AI requests](apps/web/public/screenshots/request-explorer.jpg)
+
+### Deterministic policy engine
+
+![Policy engine with the critical-threat blocking policy enabled](apps/web/public/screenshots/policy-engine.jpg)
+
 ## Repository map
 
 ```text
@@ -78,6 +96,9 @@ for the complete request lifecycle and failure behavior.
 The project follows Cloudflare's current recommendation for new Next.js apps:
 Next.js source deployed to Workers through vinext. Vinext is currently beta, so
 run its compatibility check when upgrading framework dependencies.
+
+New contributors can use the cross-platform [quick-start guide](docs/QUICKSTART.md)
+to run the gateway, console, and protected AI chatbot from a fresh clone.
 
 ## Local development
 
