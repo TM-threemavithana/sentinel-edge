@@ -368,6 +368,11 @@ td > strong + small, .key-name small { display: block; margin-top: 3px; color: #
 .upstream-list article > div { min-width: 0; display: grid; gap: 4px; flex: 1; }
 .upstream-list strong { font-size: 10px; }
 .upstream-list code { overflow: hidden; color: #73837e; font-size: 8px; white-space: nowrap; text-overflow: ellipsis; }
+.upstream-route-id { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.upstream-route-id small { flex: 0 0 auto; color: #8b9995; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.upstream-route-id code { min-width: 0; color: #34463f; }
+.upstream-route-id button { width: 24px; height: 24px; flex: 0 0 auto; display: grid; place-items: center; color: #60716b; border: 1px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; }
+.upstream-route-id button:hover { color: var(--blue); border-color: #a9bfe1; }
 .upstream-list article > span:last-child { display: flex; align-items: center; gap: 8px; }
 .upstream-list article > span:last-child small { color: #8b9995; font-size: 8px; }
 .upstream-form { margin: 12px 18px 18px; padding: 15px; display: grid; gap: 12px; border: 1px solid var(--line); border-radius: 10px; background: #f9fbfa; }

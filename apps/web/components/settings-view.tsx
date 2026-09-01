@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Box, CirclePlus, Cloud, Database, Globe2, RadioTower, ServerCog, Waypoints } from "lucide-react";
+import { Bot, Box, Check, CirclePlus, Cloud, Copy, Database, Globe2, RadioTower, ServerCog, Waypoints } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { PageHeader, StatusBadge } from "./page-header";
@@ -38,6 +38,7 @@ export function SettingsView() {
   const [runtime, setRuntime] = useState<RuntimeStatus | null>(null);
   const [message, setMessage] = useState("");
   const [loadError, setLoadError] = useState("");
+  const [copiedUpstream, setCopiedUpstream] = useState("");
 
   async function load() {
     try {
@@ -55,6 +56,12 @@ export function SettingsView() {
   }
 
   useEffect(() => { void load(); }, []);
+
+  async function copyUpstreamId(id: string) {
+    await navigator.clipboard.writeText(id);
+    setCopiedUpstream(id);
+    window.setTimeout(() => setCopiedUpstream(""), 2_000);
+  }
 
   async function createUpstream(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -86,9 +93,9 @@ export function SettingsView() {
       <div className="settings-grid">
         <section className="panel settings-section upstream-section">
           <div className="panel-heading"><div><h2>Trusted upstreams</h2><p>Only registered public HTTPS origins can receive gateway traffic.</p></div><ServerCog size={19} /></div>
-          <div className="upstream-list">{upstreams.map((upstream) => <article key={upstream.id}><span className="upstream-icon"><Cloud size={18} /></span><div><strong>{upstream.name}</strong><code>{upstream.base_url}</code></div><span><small>{upstream.timeout_ms / 1000}s timeout</small><StatusBadge value={upstream.status} /></span></article>)}</div>
+          <div className="upstream-list">{upstreams.map((upstream) => <article key={upstream.id}><span className="upstream-icon"><Cloud size={18} /></span><div><strong>{upstream.name}</strong><code>{upstream.base_url}</code><span className="upstream-route-id"><small>Route ID</small><code>{upstream.id}</code><button type="button" onClick={() => void copyUpstreamId(upstream.id)} aria-label={`Copy route ID for ${upstream.name}`}>{copiedUpstream === upstream.id ? <Check size={13} /> : <Copy size={13} />}</button></span></div><span><small>{upstream.timeout_ms / 1000}s timeout</small><StatusBadge value={upstream.status} /></span></article>)}</div>
           {upstreams.length === 0 ? <div className="table-empty compact-empty"><Cloud size={22} /><strong>No trusted upstreams</strong><span>Register a destination before routing gateway traffic.</span></div> : null}
-          <form className="upstream-form" onSubmit={createUpstream}><h3><CirclePlus size={17} /> Add upstream</h3><div className="form-grid"><label>Name<input name="name" required minLength={2} placeholder="OpenAI production" /></label><label>HTTPS base URL<input name="baseUrl" required type="url" placeholder="https://api.example.com" /></label></div><div className="form-grid"><label>Bearer credential<input name="authValue" type="password" autoComplete="off" placeholder="Optional; encrypted at rest" /></label><label>Timeout<input name="timeoutMs" type="number" min="1000" max="120000" defaultValue="30000" /></label></div><button className="button secondary" type="submit" disabled={!runtime}>Register upstream</button></form>
+          <form className="upstream-form" onSubmit={createUpstream}><h3><CirclePlus size={17} /> Add upstream</h3><div className="form-grid"><label>Name<input name="name" required minLength={2} placeholder="OpenAI production" /></label><label>HTTPS base URL<input name="baseUrl" required type="url" placeholder="https://api.example.com" /></label></div><div className="form-grid"><label>Authorization value<input name="authValue" type="password" autoComplete="off" placeholder="Optional; for example Bearer sk-…" /></label><label>Timeout<input name="timeoutMs" type="number" min="1000" max="120000" defaultValue="30000" /></label></div><button className="button secondary" type="submit" disabled={!runtime}>Register upstream</button></form>
         </section>
         <section className="panel settings-section runtime-section">
           <div className="panel-heading"><div><h2>Cloudflare runtime</h2><p>Resource bindings used by the production gateway.</p></div><span className="cf-mark">CF</span></div>
