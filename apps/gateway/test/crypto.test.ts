@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decryptValue, encryptValue, hashPassword, sha256, verifyPassword } from "../src/crypto";
+import { decryptValue, encryptValue, hashPassword, PBKDF2_ITERATIONS, sha256, verifyPassword } from "../src/crypto";
 import { upstreamSchema } from "../src/validation";
 
 describe("credential handling", () => {
@@ -8,6 +8,11 @@ describe("credential handling", () => {
     expect(hash).not.toContain("correct horse");
     await expect(verifyPassword("correct horse battery staple", hash)).resolves.toBe(true);
     await expect(verifyPassword("wrong password", hash)).resolves.toBe(false);
+  });
+
+  it("prevents password hashing settings unsupported by Cloudflare Workers", async () => {
+    await expect(hashPassword("correct horse battery staple", PBKDF2_ITERATIONS + 1))
+      .rejects.toThrow("PBKDF2 iterations must be between");
   });
 
   it("encrypts upstream credentials with authenticated encryption", async () => {

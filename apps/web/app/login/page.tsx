@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Brand } from "@/components/brand";
-import { ApiError, apiFetch } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 type Phase = "credentials" | "verify" | "enroll" | "recovery";
 
@@ -40,15 +40,16 @@ export default function LoginPage() {
 
   useEffect(() => {
     let active = true;
-    apiFetch("/v1/auth/access", { method: "POST", body: "{}" })
-      .then(() => router.replace("/dashboard"))
+    apiFetch<{ enabled: boolean }>("/v1/auth/access", { method: "POST", body: "{}" })
+      .then((result) => {
+        if (!active) return;
+        if (result.enabled) router.replace("/dashboard");
+        else setAccessCheck("local");
+      })
       .catch((cause) => {
         if (!active) return;
-        if (cause instanceof ApiError && cause.code === "access_not_enabled") setAccessCheck("local");
-        else {
-          setAccessCheck("required");
-          setError(cause instanceof Error ? cause.message : "Cloudflare Access authentication is required");
-        }
+        setAccessCheck("required");
+        setError(cause instanceof Error ? cause.message : "Cloudflare Access authentication is required");
       });
     return () => { active = false; };
   }, [router]);

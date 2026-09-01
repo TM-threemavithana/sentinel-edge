@@ -210,7 +210,7 @@ auth.post("/mfa/confirm", async (c) => {
 
   const recoveryCodes = Array.from({ length: 8 }, generateRecoveryCode);
   const recoveryHashes = await Promise.all(recoveryCodes.map((code) => sha256(normalizeRecoveryCode(code))));
-  const passwordHash = await hashPassword(parsed.data.newPassword, 210_000);
+  const passwordHash = await hashPassword(parsed.data.newPassword);
   await c.env.DB.batch([
     c.env.DB.prepare(
       `UPDATE user_mfa SET confirmed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), recovery_codes_json = ?,
@@ -233,7 +233,7 @@ auth.post("/mfa/confirm", async (c) => {
 
 auth.post("/access", async (c) => {
   if (c.env?.ACCESS_REQUIRED !== "true") {
-    return errorResponse("access_not_enabled", "Cloudflare Access is not enabled", 404);
+    return c.json({ enabled: false });
   }
   const identity = await verifyAccessIdentity(c.req.raw, c.env);
   if (!identity) return errorResponse("access_unauthenticated", "A valid Cloudflare Access session is required", 401);
@@ -259,7 +259,7 @@ auth.post("/access", async (c) => {
     resourceType: "session", resourceId: session.sessionId,
     metadata: { accessSubject: identity.subject }, request: c.req.raw, requestId: c.get("requestId"),
   }));
-  return c.json({ user: { id: row.id, email: row.email, displayName: row.display_name,
+  return c.json({ enabled: true, user: { id: row.id, email: row.email, displayName: row.display_name,
     workspaceId: row.workspace_id, workspaceName: row.workspace_name, role: row.role }, csrfToken });
 });
 

@@ -1,5 +1,10 @@
 const encoder = new TextEncoder();
 
+// Cloudflare Workers currently rejects PBKDF2 iteration counts above 100,000.
+// Keep password creation within the runtime limit so enrollment cannot fail after
+// a valid authenticator code has already been accepted.
+export const PBKDF2_ITERATIONS = 100_000;
+
 function asArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
@@ -37,7 +42,10 @@ export async function hmacSha256(secret: string, value: string): Promise<string>
   return toBase64Url(new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(value))));
 }
 
-export async function hashPassword(password: string, iterations = 100_000): Promise<string> {
+export async function hashPassword(password: string, iterations = PBKDF2_ITERATIONS): Promise<string> {
+  if (!Number.isSafeInteger(iterations) || iterations < 1 || iterations > PBKDF2_ITERATIONS) {
+    throw new Error(`PBKDF2 iterations must be between 1 and ${PBKDF2_ITERATIONS}`);
+  }
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, [
     "deriveBits",
