@@ -171,19 +171,27 @@ auth.post("/mfa/enroll", async (c) => {
   const user = await authenticateSession(c.req.raw, c.env, { allowUnverified: true });
   if (!user) return errorResponse("unauthenticated", "Sign in to continue", 401);
   const existing = await c.env.DB.prepare(
-    "SELECT mf.confirmed_at, u.auth_provider FROM users u LEFT JOIN user_mfa mf ON mf.user_id = u.id WHERE u.id = ?",
-  ).bind(user.id).first<{ confirmed_at: string | null; auth_provider: string }>();
+    "SELECT mf.confirmed_at, mf.secret_ciphertext, u.auth_provider FROM users u LEFT JOIN user_mfa mf ON mf.user_id = u.id WHERE u.id = ?",
+  ).bind(user.id).first<{ confirmed_at: string | null; secret_ciphertext: string | null; auth_provider: string }>();
   if (!existing || existing.auth_provider !== "local") return errorResponse("mfa_unavailable", "Authenticator enrollment is unavailable", 403);
   if (existing.confirmed_at) return errorResponse("mfa_already_enrolled", "Authenticator sign-in is already configured", 409);
 
-  const secret = generateTotpSecret();
-  const encrypted = await encryptValue(await mfaEncryptionKey(c.env.UPSTREAM_ENCRYPTION_KEY), secret);
-  await c.env.DB.prepare(
-    `INSERT INTO user_mfa (user_id, secret_ciphertext) VALUES (?, ?)
-     ON CONFLICT(user_id) DO UPDATE SET secret_ciphertext = excluded.secret_ciphertext,
-       recovery_codes_json = '[]', last_used_step = NULL, confirmed_at = NULL,
-       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`,
-  ).bind(user.id, encrypted).run();
+  const encryptionKey = await mfaEncryptionKey(c.env.UPSTREAM_ENCRYPTION_KEY);
+  let secretCiphertext = existing.secret_ciphertext;
+  if (!secretCiphertext) {
+    const generatedSecret = generateTotpSecret();
+    const encrypted = await encryptValue(encryptionKey, generatedSecret);
+    await c.env.DB.prepare(
+      `INSERT INTO user_mfa (user_id, secret_ciphertext) VALUES (?, ?)
+       ON CONFLICT(user_id) DO NOTHING`,
+    ).bind(user.id, encrypted).run();
+    const pending = await c.env.DB.prepare(
+      "SELECT secret_ciphertext, confirmed_at FROM user_mfa WHERE user_id = ? LIMIT 1",
+    ).bind(user.id).first<{ secret_ciphertext: string; confirmed_at: string | null }>();
+    if (!pending || pending.confirmed_at) return errorResponse("mfa_setup_unavailable", "Authenticator enrollment cannot be completed", 409);
+    secretCiphertext = pending.secret_ciphertext;
+  }
+  const secret = await decryptValue(encryptionKey, secretCiphertext);
   return c.json({ secret, uri: buildTotpUri(secret, user.email), issuer: "Sentinel Edge" });
 });
 
