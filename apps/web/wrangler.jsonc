@@ -18,7 +18,8 @@
       "name": "sentinel-edge-console-staging",
       "vars": {
         "GATEWAY_ORIGIN": "https://sentinel-edge-gateway-staging.tharukamaduwantha62.workers.dev",
-        "NEXT_PUBLIC_APP_NAME": "Sentinel Edge"
+        "NEXT_PUBLIC_APP_NAME": "Sentinel Edge",
+        "DEMO_MODEL": "openai/gpt-oss-20b"
       },
       "services": [
         {
@@ -31,7 +32,9 @@
       "name": "sentinel-edge-console",
       "vars": {
         "GATEWAY_ORIGIN": "https://sentinel-edge-gateway-production.tharukamaduwantha62.workers.dev",
-        "NEXT_PUBLIC_APP_NAME": "Sentinel Edge"
+        "NEXT_PUBLIC_APP_NAME": "Sentinel Edge",
+        "DEMO_UPSTREAM_ID": "c23f3426-509d-41af-9c59-1a53213c87be",
+        "DEMO_MODEL": "openai/gpt-oss-20b"
       },
       "services": [
         {

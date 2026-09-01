@@ -8,6 +8,7 @@ import {
   KeyRound,
   LogOut,
   Menu,
+  MessageSquareText,
   Search,
   Settings,
   ShieldCheck,
@@ -23,6 +24,7 @@ import { Brand } from "./brand";
 const navigation = [
   { href: "/dashboard", label: "Overview", icon: Gauge },
   { href: "/dashboard/requests", label: "Requests", icon: Activity },
+  { href: "/dashboard/demo", label: "Demo lab", icon: MessageSquareText },
   { href: "/dashboard/policies", label: "Policies", icon: SlidersHorizontal },
   { href: "/dashboard/api-keys", label: "API keys", icon: KeyRound },
   { href: "/dashboard/audit", label: "Audit log", icon: FileClock },
@@ -31,6 +33,7 @@ const navigation = [
 const routeLabels: Record<string, string> = {
   "/dashboard": "Threat posture",
   "/dashboard/requests": "Request explorer",
+  "/dashboard/demo": "Protected AI demo",
   "/dashboard/policies": "Policy engine",
   "/dashboard/api-keys": "API keys",
   "/dashboard/audit": "Audit log",
