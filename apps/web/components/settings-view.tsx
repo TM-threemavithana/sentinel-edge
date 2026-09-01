@@ -1,8 +1,8 @@
 "use client";
 
 import { Bot, Box, Check, CirclePlus, Cloud, Copy, Database, Globe2, RadioTower, ServerCog, Waypoints } from "lucide-react";
-import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { ApiError, apiFetch } from "@/lib/api";
 import { PageHeader, StatusBadge } from "./page-header";
 
 interface Upstream {
@@ -39,6 +39,8 @@ export function SettingsView() {
   const [message, setMessage] = useState("");
   const [loadError, setLoadError] = useState("");
   const [copiedUpstream, setCopiedUpstream] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const createInFlight = useRef(false);
 
   async function load() {
     try {
@@ -65,7 +67,11 @@ export function SettingsView() {
 
   async function createUpstream(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    if (createInFlight.current) return;
+    createInFlight.current = true;
+    setIsCreating(true);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
       await apiFetch("/v1/upstreams", {
         method: "POST",
@@ -78,10 +84,18 @@ export function SettingsView() {
         }),
       });
       setMessage("Upstream created. Its credential was encrypted before storage.");
-      event.currentTarget.reset();
+      formElement.reset();
       await load();
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "Could not create upstream");
+      if (cause instanceof ApiError && cause.code === "upstream_name_conflict") {
+        setMessage("That upstream is already registered. Use its route ID from the list above.");
+        await load();
+      } else {
+        setMessage(cause instanceof Error ? cause.message : "Could not create upstream");
+      }
+    } finally {
+      createInFlight.current = false;
+      setIsCreating(false);
     }
   }
 
@@ -95,7 +109,7 @@ export function SettingsView() {
           <div className="panel-heading"><div><h2>Trusted upstreams</h2><p>Only registered public HTTPS origins can receive gateway traffic.</p></div><ServerCog size={19} /></div>
           <div className="upstream-list">{upstreams.map((upstream) => <article key={upstream.id}><span className="upstream-icon"><Cloud size={18} /></span><div><strong>{upstream.name}</strong><code>{upstream.base_url}</code><span className="upstream-route-id"><small>Route ID</small><code>{upstream.id}</code><button type="button" onClick={() => void copyUpstreamId(upstream.id)} aria-label={`Copy route ID for ${upstream.name}`}>{copiedUpstream === upstream.id ? <Check size={13} /> : <Copy size={13} />}</button></span></div><span><small>{upstream.timeout_ms / 1000}s timeout</small><StatusBadge value={upstream.status} /></span></article>)}</div>
           {upstreams.length === 0 ? <div className="table-empty compact-empty"><Cloud size={22} /><strong>No trusted upstreams</strong><span>Register a destination before routing gateway traffic.</span></div> : null}
-          <form className="upstream-form" onSubmit={createUpstream}><h3><CirclePlus size={17} /> Add upstream</h3><div className="form-grid"><label>Name<input name="name" required minLength={2} placeholder="OpenAI production" /></label><label>HTTPS base URL<input name="baseUrl" required type="url" placeholder="https://api.example.com" /></label></div><div className="form-grid"><label>Authorization value<input name="authValue" type="password" autoComplete="off" placeholder="Optional; for example Bearer sk-…" /></label><label>Timeout<input name="timeoutMs" type="number" min="1000" max="120000" defaultValue="30000" /></label></div><button className="button secondary" type="submit" disabled={!runtime}>Register upstream</button></form>
+          <form className="upstream-form" onSubmit={createUpstream}><h3><CirclePlus size={17} /> Add upstream</h3><div className="form-grid"><label>Name<input name="name" required minLength={2} placeholder="OpenAI production" /></label><label>HTTPS base URL<input name="baseUrl" required type="url" placeholder="https://api.example.com" /></label></div><div className="form-grid"><label>Authorization value<input name="authValue" type="password" autoComplete="off" placeholder="Optional; for example Bearer sk-…" /></label><label>Timeout<input name="timeoutMs" type="number" min="1000" max="120000" defaultValue="30000" /></label></div><button className="button secondary" type="submit" disabled={!runtime || isCreating}>{isCreating ? "Registering…" : "Register upstream"}</button></form>
         </section>
         <section className="panel settings-section runtime-section">
           <div className="panel-heading"><div><h2>Cloudflare runtime</h2><p>Resource bindings used by the production gateway.</p></div><span className="cf-mark">CF</span></div>
