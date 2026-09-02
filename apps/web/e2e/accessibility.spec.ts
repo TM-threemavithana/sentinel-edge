@@ -34,7 +34,7 @@ test("login has no automatically detectable accessibility violations", async ({ 
   expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
   const nonce = headers["content-security-policy"]?.match(/'nonce-([^']+)'/u)?.[1];
   expect(nonce).toBeTruthy();
-  expect(headers["content-security-policy"]?.match(/script-src[^;]+/u)?.[0]).not.toContain("'unsafe-inline'");
+  expect(headers["content-security-policy"]).not.toContain("'unsafe-inline'");
   await expect.poll(async () => page.locator("script[nonce]").first().evaluate((element) => (element as HTMLScriptElement).nonce)).toBe(nonce);
   expect(headers["strict-transport-security"]).toContain("max-age=31536000");
   expect(headers["x-content-type-options"]).toBe("nosniff");

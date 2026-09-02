@@ -44,7 +44,7 @@ export default function ShowcasePage() {
         </div>
         <div className="showcase-product-frame">
           <div className="showcase-frame-bar"><span><i /><i /><i /></span><em>Recorded production view</em></div>
-          <Image src="/screenshots/dashboard-overview.jpg" width={1536} height={960} priority alt="Sentinel Edge threat posture dashboard with live request metrics" />
+          <Image src="/screenshots/dashboard-overview.jpg" width={1536} height={960} priority unoptimized alt="Sentinel Edge threat posture dashboard with live request metrics" />
         </div>
       </section>
 

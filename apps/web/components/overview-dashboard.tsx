@@ -24,6 +24,12 @@ function number(value: number): string {
   return new Intl.NumberFormat("en-US", { notation: value >= 100_000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(value);
 }
 
+function threatWidthClass(count: number, maximum: number): string {
+  const percentage = maximum > 0 ? (count / maximum) * 100 : 0;
+  const step = Math.max(0, Math.min(100, Math.round(percentage / 10) * 10));
+  return `threat-width-${step}`;
+}
+
 export function OverviewDashboard() {
   const [data, setData] = useState<OverviewData | null>(null);
   const [live, setLive] = useState({ requestsPerMinute: 0, activeSessions: 0 });
@@ -122,7 +128,7 @@ export function OverviewDashboard() {
         </article>
         <article className="panel protection-panel">
           <div className="panel-heading"><div><span className="panel-kicker">Coverage</span><h2>Enforcement configuration</h2><p>Verified runtime capabilities</p></div><ShieldAlert size={18} /></div>
-          <div className="score-ring" style={{ "--score": data?.capabilities.activePolicies ? "100%" : "0%" } as React.CSSProperties}><div><strong>{data?.capabilities.activePolicies ?? "—"}</strong><small>active policies</small></div></div>
+          <div className={`score-ring ${data?.capabilities.activePolicies ? "has-policies" : "no-policies"}`}><div><strong>{data?.capabilities.activePolicies ?? "—"}</strong><small>active policies</small></div></div>
           <div className="score-items"><span><i className={data?.capabilities.activePolicies ? "good" : "warn"} /> Policy enforcement<strong>{data ? (data.capabilities.activePolicies > 0 ? "Configured" : "No policies") : "Unknown"}</strong></span><span><i className={data?.capabilities.aiEnabled ? "good" : "warn"} /> AI inspection<strong>{data ? (data.capabilities.aiEnabled ? "Active" : "Disabled") : "Unknown"}</strong></span><span><i className={data?.capabilities.artifactStorageEnabled ? "good" : "warn"} /> Artifact storage<strong>{data ? (data.capabilities.artifactStorageEnabled ? "Active" : "Disabled") : "Unknown"}</strong></span></div>
           <div className="live-strip"><span><i /> {number(live.requestsPerMinute)} req/min</span><span>{live.activeSessions} active sessions</span></div>
         </article>
@@ -135,7 +141,7 @@ export function OverviewDashboard() {
         </article>
         <article className="panel threat-panel">
           <div className="panel-heading"><div><h2>Top threat signals</h2><p>Last 7 days</p></div></div>
-          <div className="threat-list">{(data?.topThreats ?? []).map((threat, index) => { const max = Number(data?.topThreats[0]?.count ?? 1); return <div key={threat.category}><span><i>{index + 1}</i>{threat.category.replaceAll("_", " ")}</span><strong>{number(Number(threat.count))}</strong><div><b style={{ width: `${(Number(threat.count) / max) * 100}%` }} /></div></div>; })}</div>
+          <div className="threat-list">{(data?.topThreats ?? []).map((threat, index) => { const max = Number(data?.topThreats[0]?.count ?? 1); return <div key={threat.category}><span><i>{index + 1}</i>{threat.category.replaceAll("_", " ")}</span><strong>{number(Number(threat.count))}</strong><div><b className={threatWidthClass(Number(threat.count), max)} /></div></div>; })}</div>
           {data && data.topThreats.length === 0 ? <div className="table-empty compact-empty"><ShieldCheck size={22} /><strong>No threat signals</strong><span>No threats were recorded in the current window.</span></div> : null}
         </article>
       </section>

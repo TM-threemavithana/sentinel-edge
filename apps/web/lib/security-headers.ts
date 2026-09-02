@@ -11,7 +11,7 @@ export function createContentSecurityPolicy(nonce: string, isDevelopment: boolea
     "manifest-src 'self'",
     "object-src 'none'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${developmentScriptPolicy}`,
-    "style-src 'self' 'unsafe-inline'",
+    `style-src 'self' 'nonce-${nonce}'`,
     "upgrade-insecure-requests",
     "worker-src 'none'",
   ].join("; ");

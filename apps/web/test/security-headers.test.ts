@@ -13,6 +13,7 @@ describe("console security headers", () => {
     expect(headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
     expect(headers.get("content-security-policy")).toContain("'nonce-test-nonce'");
     expect(headers.get("content-security-policy")?.match(/script-src[^;]+/u)?.[0]).not.toContain("'unsafe-inline'");
+    expect(headers.get("content-security-policy")?.match(/style-src[^;]+/u)?.[0]).not.toContain("'unsafe-inline'");
     expect(headers.get("strict-transport-security")).toContain("max-age=31536000");
     expect(headers.get("x-content-type-options")).toBe("nosniff");
     expect(headers.get("x-frame-options")).toBe("DENY");
