@@ -27,8 +27,14 @@ async function mockAuthenticatedConsole(page: Page) {
 
 test("login has no automatically detectable accessibility violations", async ({ page }) => {
   await page.route("**/api/backend/v1/auth/access", (route) => route.fulfill({ json: { enabled: false } }));
-  await page.goto("/login");
+  const response = await page.goto("/login");
   await expect(page.getByRole("button", { name: "Sign in securely" })).toBeVisible();
+
+  const headers = response?.headers() ?? {};
+  expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
+  expect(headers["strict-transport-security"]).toContain("max-age=31536000");
+  expect(headers["x-content-type-options"]).toBe("nosniff");
+  expect(headers["cache-control"]).toContain("no-store");
 
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);

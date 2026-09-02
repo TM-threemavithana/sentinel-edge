@@ -21,6 +21,7 @@ No unreleased changes.
 - Safe local setup, deployment validation, integration examples, and troubleshooting documentation
 - Public, credential-free product showcase
 - Contributor guidance, issue templates, and release documentation
+- Browser isolation, content-security, transport, and private-cache response headers
 
 ### Changed
 
