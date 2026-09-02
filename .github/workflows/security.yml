@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Install Gitleaks 8.30.1
@@ -42,7 +42,7 @@ jobs:
     container:
       image: semgrep/semgrep:1.172.0
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Scan source
         run: semgrep scan --config p/typescript --config p/nodejs --config p/security-audit --error --metrics=off --exclude node_modules --exclude dist --exclude coverage --exclude apps/web/public/screenshots
 
@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: anchore/sbom-action@v0.24.0
         with:
           path: .
