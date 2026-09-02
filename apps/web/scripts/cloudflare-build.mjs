@@ -1,5 +1,8 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const environment = process.argv[2];
 const action = process.argv[3];
@@ -24,14 +27,7 @@ if (!environmentVariables) {
   process.exit(1);
 }
 
-const run = (name, args) => {
-  const executable = process.platform === "win32"
-    ? process.env.ComSpec ?? "cmd.exe"
-    : name;
-  const executableArgs = process.platform === "win32"
-    ? ["/d", "/s", "/c", `${name} ${args.join(" ")}`]
-    : args;
-  const result = spawnSync(executable, executableArgs, {
+const spawnOptions = {
     cwd: projectDirectory,
     env: {
       ...environmentVariables,
@@ -40,14 +36,22 @@ const run = (name, args) => {
     },
     encoding: "utf8",
     stdio: "inherit",
-  });
+  };
+
+function requireSuccess(result) {
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
-};
-
-run("vinext", ["build", "--mode", environment]);
-if (action === "build") {
-  run("wrangler", ["deploy", "--dry-run", "--outdir", `.wrangler/dry-run/${environment}`]);
-} else {
-  run("wrangler", ["deploy"]);
 }
+
+const require = createRequire(import.meta.url);
+const vinextEntry = fileURLToPath(new URL("cli.js", import.meta.resolve("vinext")));
+const wranglerEntry = resolve(dirname(require.resolve("wrangler/package.json")), "bin/wrangler.js");
+
+requireSuccess(spawnSync(process.execPath, [vinextEntry, "build", "--mode", environment], spawnOptions));
+if (action === "build") {
+  requireSuccess(spawnSync(process.execPath, [wranglerEntry, "deploy", "--dry-run", "--outdir", `.wrangler/dry-run/${environment}`], spawnOptions));
+} else {
+  requireSuccess(spawnSync(process.execPath, [wranglerEntry, "deploy"], spawnOptions));
+}
+
+process.exit(0);

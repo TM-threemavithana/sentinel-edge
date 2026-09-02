@@ -11,10 +11,14 @@
     "dev": "pnpm --parallel --filter @sentinel/gateway --filter @sentinel/web dev",
     "dev:gateway": "pnpm --filter @sentinel/gateway dev",
     "dev:web": "pnpm --filter @sentinel/web dev",
+    "setup:local": "node scripts/setup-local.mjs",
+    "validate:config": "node scripts/validate-config.mjs",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "test:coverage": "pnpm --filter @sentinel/security-core test:coverage && pnpm --filter @sentinel/gateway test:coverage",
+    "test:e2e": "pnpm --filter @sentinel/web test:e2e",
+    "test:load": "node scripts/load-test.mjs",
     "cf:typegen": "pnpm --filter @sentinel/gateway cf:typegen && pnpm --filter @sentinel/web cf:typegen"
   }
 }

@@ -4,30 +4,26 @@ Sentinel Edge separates the control plane from the request data plane. The
 Next.js application is an operator console. The gateway Worker remains small,
 stateless between requests, and independently deployable.
 
-```text
-Operator browser
-      |
-      v
-Next.js console Worker (vinext)
-      |  same-site BFF proxy
-      v
-Gateway Worker ---------------------------------------------------+
-      |                                                           |
-      +--> D1: users, sessions, keys, policies, events, audit      |
-      +--> KV: short-lived compiled policy cache                   |
-      +--> Durable Object: limits, live counters, presence         |
-      +--> Queue: redacted async threat analysis                   |
-      +--> Workers AI: structured threat classification           |
-      +--> R2: redacted request samples and analysis reports       |
-      |                                                           |
-      +---------------- allowed request -------------------------->+ Upstream API
+```mermaid
+flowchart LR
+  browser[Operator browser] -->|same-origin| console[Next.js console Worker]
+  app[Application backend] -->|Sentinel API key| gateway[Gateway Worker]
+  console -->|private service binding| gateway
+  gateway --> d1[(D1 identity, policy, audit)]
+  gateway --> kv[(KV policy cache)]
+  gateway --> durable[Durable Object limits]
+  gateway --> queue[Queue: redacted analysis]
+  queue --> ai[Workers AI]
+  queue --> r2[(R2 optional artifacts)]
+  gateway -->|allowed requests only| upstream[Registered upstream API]
 ```
 
 ## Request lifecycle
 
 1. A client presents an `sg_live_…` key in `x-sentinel-key`.
 2. The Worker hashes the presented value and resolves its active D1 record.
-3. The upstream ID is resolved from a workspace-owned allowlist. Arbitrary
+3. The upstream ID is resolved from a workspace-owned allowlist. Its HTTPS host
+   and public DNS answers are validated again before forwarding. Arbitrary
    destination URLs are never accepted from the caller.
 4. The request is bounded, normalized, and inspected for deterministic signals.
 5. Ordered policy rules are loaded from KV or D1 and evaluated.

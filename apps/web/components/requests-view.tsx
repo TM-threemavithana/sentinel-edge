@@ -69,7 +69,7 @@ export function RequestsView() {
       </section>
       <section className="panel explorer-panel">
         <div className="filter-bar">
-          <label className="table-search"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search request ID or endpoint" aria-label="Search requests" /></label>
+          <label className="table-search"><Search size={16} /><input name="request-search" type="search" autoComplete="off" spellCheck={false} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search request ID or endpoint…" aria-label="Search requests" /></label>
           <label className="select-wrap"><Filter size={15} /><select value={decision} onChange={(event) => setDecision(event.target.value)} aria-label="Filter by decision"><option value="all">All decisions</option><option value="allow">Allowed</option><option value="block">Blocked</option><option value="challenge">Challenged</option><option value="rate_limited">Rate limited</option></select></label>
           {query || decision !== "all" ? <button className="button ghost" type="button" onClick={() => { setQuery(""); setDecision("all"); }}>Clear filters</button> : null}
           <span className={`data-mode ${loadError ? "demo" : "live"}`}><i /> {loadError ? "Events unavailable" : `${filtered.length} live events`}</span>

@@ -2,6 +2,7 @@
 
 import { Activity, ArrowLeft, ArrowRight, CheckCircle2, Copy, Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Brand } from "@/components/brand";
@@ -140,6 +141,7 @@ export default function LoginPage() {
 
   return (
     <main className="login-page">
+      <a className="skip-link" href="#login-form">Skip to sign in</a>
       <section className="login-story">
         <div className="login-story-inner">
           <Brand />
@@ -162,13 +164,13 @@ export default function LoginPage() {
           <p className="login-footnote"><span /> Cloudflare-native control plane</p>
         </div>
       </section>
-      <section className="login-panel">
+      <section className="login-panel" id="login-form" tabIndex={-1}>
         <div className="login-form-wrap">
           <span className="mobile-login-brand"><Brand /></span>
           <div className="login-heading"><span className="login-lock">{phase === "credentials" ? <LockKeyhole size={20} /> : <KeyRound size={20} />}</span><h2>{phase === "credentials" ? "Welcome back" : phase === "verify" ? "Verify it’s you" : phase === "enroll" ? "Secure your account" : "Save recovery codes"}</h2><p>{phase === "credentials" ? "Sign in to your security operations console." : phase === "verify" ? "Enter a current authenticator code or a recovery code." : phase === "enroll" ? "Add Sentinel Edge to your authenticator and replace the disclosed password." : "Keep these one-time codes somewhere private and offline."}</p></div>
           {accessCheck === "local" && phase === "credentials" ? <form onSubmit={submit}>
             <label htmlFor="email">Work email</label>
-            <input id="email" name="email" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required />
+            <input id="email" name="email" type="email" autoComplete="username" spellCheck={false} placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} required />
             <div className="password-row"><label htmlFor="password">Password</label></div>
             <div className="password-field"><input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
             {error ? <p className="form-error" role="alert">{error}</p> : null}
@@ -188,12 +190,12 @@ export default function LoginPage() {
               <details><summary>Can’t scan it?</summary><code>{enrollment.secret}</code></details>
             </div>
             <label htmlFor="setup-code">2. Enter the 6-digit code</label>
-            <input id="setup-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/gu, ""))} placeholder="123456" required />
+            <input id="setup-code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/gu, ""))} placeholder="123456" required />
             <label htmlFor="new-password">3. Choose a new password</label>
-            <input id="new-password" type="password" autoComplete="new-password" minLength={16} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required />
+            <input id="new-password" name="new-password" type="password" autoComplete="new-password" minLength={16} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required />
             <p className="field-help">Use at least 16 characters. Your previous password cannot be reused.</p>
             <label htmlFor="confirm-password">Confirm new password</label>
-            <input id="confirm-password" type="password" autoComplete="new-password" minLength={16} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required />
+            <input id="confirm-password" name="confirm-password" type="password" autoComplete="new-password" minLength={16} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required />
             {error ? <p className="form-error" role="alert">{error}</p> : null}
             <button className="button primary login-submit" type="submit" disabled={submitting}>{submitting ? "Securing account…" : <>Enable authenticator <ShieldCheck size={17} /></>}</button>
           </form> : null}
@@ -205,7 +207,7 @@ export default function LoginPage() {
           </div> : null}
           {accessCheck !== "local" ? <div className="access-login-state" role="status"><span className="cf-mark">CF</span><strong>{accessCheck === "checking" ? "Checking sign-in configuration…" : "Cloudflare Access required"}</strong>{error ? <p className="form-error" role="alert">{error}</p> : null}</div> : null}
           <div className="demo-note"><strong>Authorized workspace access only.</strong><span>Use the account issued by your Sentinel Edge administrator.</span></div>
-          <p className="legal-copy">By signing in, you agree to the acceptable use and privacy policies.</p>
+          <p className="legal-copy">By signing in, you agree to the acceptable use and privacy policies. <Link href="/showcase">View the public showcase.</Link></p>
         </div>
       </section>
     </main>

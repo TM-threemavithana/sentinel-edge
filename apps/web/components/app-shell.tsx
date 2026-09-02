@@ -75,6 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-frame">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
         <div className="sidebar-brand"><Brand /><button className="icon-button mobile-only" type="button" onClick={() => setMenuOpen(false)} aria-label="Close navigation"><X size={18} /></button></div>
         <div className="workspace-switcher">
@@ -118,7 +119,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="environment-pill"><i /> Authenticated console</span>
           </div>
         </header>
-        <main className="console-main">{children}</main>
+        <main className="console-main" id="main-content" tabIndex={-1}>{children}</main>
       </div>
     </div>
   );

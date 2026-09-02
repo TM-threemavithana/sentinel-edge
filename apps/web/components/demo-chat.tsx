@@ -137,7 +137,7 @@ export function DemoChat() {
           </div>
           <form className="demo-composer" onSubmit={sendMessage}>
             <label htmlFor="demo-message">Message</label>
-            <textarea id="demo-message" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={handleComposerKeyDown} maxLength={DEMO_MESSAGE_LIMIT} rows={3} placeholder="Ask the protected model something…" disabled={isSending} />
+            <textarea id="demo-message" name="message" autoComplete="off" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={handleComposerKeyDown} maxLength={DEMO_MESSAGE_LIMIT} rows={3} placeholder="Ask the protected model something…" disabled={isSending} />
             <div><span><LockKeyhole size={12} /> Keys remain encrypted and server-side</span><small>{draft.length}/{DEMO_MESSAGE_LIMIT}</small><button className="button primary" type="submit" disabled={!draft.trim() || isSending}>{isSending ? "Inspecting…" : "Send"}<ArrowUp size={15} /></button></div>
           </form>
         </section>

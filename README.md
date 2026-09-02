@@ -1,11 +1,18 @@
 # Sentinel Edge
 
+[![CI](https://github.com/TM-threemavithana/sentinel-edge/actions/workflows/ci.yml/badge.svg)](https://github.com/TM-threemavithana/sentinel-edge/actions/workflows/ci.yml)
+[![Security](https://github.com/TM-threemavithana/sentinel-edge/actions/workflows/security.yml/badge.svg)](https://github.com/TM-threemavithana/sentinel-edge/actions/workflows/security.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-78a843.svg)](LICENSE)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-f38020)](https://sentinel-edge-console.tharukamaduwantha62.workers.dev/showcase)
+
 Sentinel Edge is a production-style AI and API security gateway built for
 Cloudflare. It combines a Next.js operations console with an independently
 deployable Worker data plane, deterministic request inspection, an ordered policy
 engine, tenant-aware rate limits, and asynchronous Workers AI classification.
 
 ![Sentinel Edge social preview](apps/web/public/og.png)
+
+[View the credential-free product showcase](https://sentinel-edge-console.tharukamaduwantha62.workers.dev/showcase) · [Start locally](docs/QUICKSTART.md) · [Integration examples](examples/README.md)
 
 > Portfolio-grade means the repository demonstrates real architecture, security
 > boundaries, infrastructure bindings, tests, and deployment workflows. Before
@@ -27,7 +34,7 @@ engine, tenant-aware rate limits, and asynchronous Workers AI classification.
 - Ordered rule engine, deterministic request inspection, SSRF-safe upstreams,
   request size bounds, header stripping, and credential encryption
 - Analytics, request explorer, protected AI demo, policy builder, API keys, audit, and settings views
-- Vitest suites, strict TypeScript, CI, deployment workflow, runbook, and threat model
+- 121 unit/integration checks, browser journeys, accessibility scanning, coverage gates, strict TypeScript, CI, zero-cost Semgrep and secret scanning, deployment workflow, runbook, and threat model
 
 ## Product screenshots
 
@@ -109,6 +116,14 @@ pnpm install
 ```
 
 ### 2. Create local configuration
+
+The safe setup helper generates strong local secrets and keeps existing files:
+
+```bash
+pnpm setup:local
+```
+
+Or create the files manually:
 
 ```bash
 cp apps/gateway/.dev.vars.example apps/gateway/.dev.vars
@@ -208,6 +223,9 @@ pnpm typecheck                     # strict TypeScript in every workspace
 pnpm test                          # unit and security-focused tests
 pnpm build                         # Worker dry run + vinext production build
 pnpm test:coverage                 # coverage for core and gateway tests
+pnpm test:e2e                      # browser journeys and accessibility checks
+pnpm test:load                     # bounded local health/load smoke test
+pnpm validate:config               # deployment safety invariants
 pnpm cf:typegen                    # regenerate binding types after config changes
 ```
 
@@ -366,6 +384,7 @@ TOTP flow is enforced, so the console does not require a paid identity service.
 - Client API keys and sessions are never stored in plaintext.
 - Upstream credentials use AES-256-GCM with a Worker secret.
 - Public HTTPS upstream validation blocks common private/metadata addresses.
+- DNS A/AAAA answers are checked at registration and immediately before forwarding.
 - Prepared D1 statements and Zod schemas reduce injection risk.
 - The deterministic policy path does not depend on an AI model response.
 - The Workers AI prompt explicitly treats samples as untrusted data and only
@@ -375,8 +394,10 @@ TOTP flow is enforced, so the console does not require a paid identity service.
 - Management mutations use Origin validation in addition to strict cookies.
 - Request logs are structured and omit raw bodies and credentials.
 
-Read [SECURITY.md](SECURITY.md), [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md), and
-[docs/RUNBOOK.md](docs/RUNBOOK.md) before operating the service.
+Read [SECURITY.md](SECURITY.md), [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md),
+[docs/RUNBOOK.md](docs/RUNBOOK.md), and the [deployment checklist](docs/DEPLOYMENT_CHECKLIST.md)
+before operating the service. Use the [troubleshooting guide](docs/TROUBLESHOOTING.md)
+for common setup and runtime problems.
 
 ## Extending the rule engine
 
@@ -391,8 +412,8 @@ severity, and body conditions. Add new operators in
 
 - Self-service password reset, invitations, and email verification are not yet
   implemented. Administrators must follow the audited recovery runbook.
-- The IP/private-host validator covers direct literal targets. Production SSRF
-  defenses should additionally resolve and continuously verify DNS destinations.
+- DNS safety checks use a short cache. A high-assurance deployment should add
+  provider-specific egress controls to eliminate DNS rebinding time-of-check gaps.
 - File uploads are pattern-inspected, not antivirus-scanned.
 - Analytics use D1 queries suitable for a portfolio or moderate workload. At high
   volume, emit to Analytics Engine or a dedicated observability pipeline.

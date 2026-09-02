@@ -4,6 +4,7 @@ import { errorResponse, requireSession } from "../helpers";
 import { encryptValue } from "../crypto";
 import { writeAudit } from "../audit";
 import { readJsonBody, upstreamSchema } from "../validation";
+import { assertPublicUpstreamDestination, UnsafeUpstreamError } from "../upstream-safety";
 
 const upstreams = new Hono<AppBindings>();
 
@@ -25,6 +26,14 @@ upstreams.post("/", requireSession(["admin"]), async (c) => {
   if (!body.success && body.reason === "too_large") return errorResponse("payload_too_large", "Management request body exceeds 64 KiB", 413);
   const parsed = upstreamSchema.safeParse(body.success ? body.data : null);
   if (!parsed.success) return errorResponse("invalid_input", parsed.error.issues[0]?.message ?? "Invalid upstream", 422);
+  try {
+    await assertPublicUpstreamDestination(parsed.data.baseUrl, c.env);
+  } catch (error) {
+    if (error instanceof UnsafeUpstreamError) {
+      return errorResponse("unsafe_upstream", error.message, 422);
+    }
+    throw error;
+  }
   const user = c.get("user");
   const id = crypto.randomUUID();
   const encrypted = parsed.data.authValue

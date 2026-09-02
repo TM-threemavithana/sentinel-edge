@@ -1,0 +1,97 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Sentinel Edge data-plane API",
+    "version": "1.0.0",
+    "description": "Invoke a registered upstream through the Sentinel Edge inspection and policy pipeline. Management endpoints use the authenticated console session."
+  },
+  "servers": [{ "url": "https://sentinel-edge-gateway-production.tharukamaduwantha62.workers.dev" }],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Check gateway health",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Gateway is serving requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["status"],
+                  "properties": { "status": { "type": "string", "const": "ok" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/gateway/{upstreamId}/chat/completions": {
+      "parameters": [
+        {
+          "name": "upstreamId",
+          "in": "path",
+          "required": true,
+          "description": "Workspace-owned upstream identifier from console Settings",
+          "schema": { "type": "string", "format": "uuid" }
+        }
+      ],
+      "post": {
+        "summary": "Inspect and forward a request",
+        "operationId": "invokeUpstream",
+        "security": [{ "sentinelKey": [] }],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": { "schema": { "type": "object", "additionalProperties": true } }
+          }
+        },
+        "responses": {
+          "200": { "description": "Allowed upstream response" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "403": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" },
+          "413": { "$ref": "#/components/responses/Error" },
+          "429": { "$ref": "#/components/responses/Error" },
+          "502": { "$ref": "#/components/responses/Error" },
+          "504": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sentinelKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-sentinel-key",
+        "description": "Dedicated key with gateway:invoke scope. Keep it in a trusted backend."
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Sentinel Edge rejection or gateway error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": ["error"],
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "required": ["code", "message"],
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" }
+                  }
+                },
+                "requestId": { "type": "string", "format": "uuid" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

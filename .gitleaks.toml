@@ -1,0 +1,17 @@
+title = "Sentinel Edge secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Synthetic OpenAI-shaped values used to verify redaction and detection"
+regexTarget = "match"
+regexes = [
+  '''sk-proj-abcdefghijklmnopqrstuv''',
+  '''sk-proj-1234567890abcdefghij''',
+  '''sk-1234567890abcdefghij''',
+  '''sg_live_REPLACE_ME''',
+  '''GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ''',
+  '''0123456789abcdef0123456789abcdef''',
+  '''sg_live_(E7x2aQ|R9p4kM|B2n8vL)''',
+]

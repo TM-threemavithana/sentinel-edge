@@ -8,6 +8,7 @@ import { classifyThreat, type AiClassification } from "../ai";
 import { authenticateApiKey } from "../auth";
 import { getPolicies } from "../policies";
 import { dispatchAnalysis } from "../analysis";
+import { assertPublicUpstreamDestination, UnsafeUpstreamError } from "../upstream-safety";
 
 
 type ClassificationResult = AiClassification;
@@ -42,6 +43,13 @@ gateway.all("/:upstreamId/*", async (c) => {
 
   if (!upstream) {
     return errorResponse("upstream_not_found", "The specified upstream does not exist.", 404);
+  }
+
+  try {
+    await assertPublicUpstreamDestination(upstream.base_url, c.env);
+  } catch (error) {
+    console.warn(JSON.stringify({ requestId, message: "upstream_dns_safety_failed", error: error instanceof UnsafeUpstreamError ? error.message : String(error) }));
+    return errorResponse("unsafe_upstream", "The upstream destination failed its public-address safety check", 502);
   }
 
   // Derive paths properly before inspection

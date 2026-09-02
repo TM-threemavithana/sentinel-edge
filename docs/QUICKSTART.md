@@ -22,6 +22,14 @@ pnpm install
 
 ## 2. Create local configuration
 
+The recommended helper generates strong local secrets and keeps existing files:
+
+```bash
+pnpm setup:local
+```
+
+To create the files manually instead, use the committed templates below.
+
 PowerShell:
 
 ```powershell
