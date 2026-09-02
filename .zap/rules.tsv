@@ -1,4 +1,5 @@
 # Confirmed framework/scanner artifacts remain visible as informational findings.
 10031	INFO	(Static timeout default; query parameters are not read by the settings page)
+10049	INFO	(Authenticated and redirect responses are intentionally non-cacheable)
 10094	INFO	(React server-component payload identifiers, not application secrets)
 90005	INFO	(Sec-Fetch request headers are controlled by the scanning client)

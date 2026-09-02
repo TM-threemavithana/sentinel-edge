@@ -1,6 +1,6 @@
-export const securityHeaders = {
-  "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate",
-  "content-security-policy": [
+export function createContentSecurityPolicy(nonce: string, isDevelopment: boolean) {
+  const developmentScriptPolicy = isDevelopment ? " 'unsafe-eval'" : "";
+  return [
     "default-src 'self'",
     "base-uri 'none'",
     "connect-src 'self'",
@@ -10,25 +10,39 @@ export const securityHeaders = {
     "img-src 'self' data:",
     "manifest-src 'self'",
     "object-src 'none'",
-    "script-src 'self' 'unsafe-inline'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${developmentScriptPolicy}`,
     "style-src 'self' 'unsafe-inline'",
     "upgrade-insecure-requests",
     "worker-src 'none'",
-  ].join("; "),
+  ].join("; ");
+}
+
+export const securityHeaders = {
   "cross-origin-embedder-policy": "require-corp",
   "cross-origin-opener-policy": "same-origin",
   "cross-origin-resource-policy": "same-origin",
-  expires: "0",
   "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
-  pragma: "no-cache",
   "referrer-policy": "no-referrer",
   "strict-transport-security": "max-age=31536000; includeSubDomains",
   "x-content-type-options": "nosniff",
   "x-frame-options": "DENY",
 } as const;
 
-export function applySecurityHeaders(headers: Headers) {
+interface SecurityHeaderOptions {
+  cacheControl: string;
+  contentSecurityPolicy?: string | undefined;
+}
+
+export function applySecurityHeaders(headers: Headers, options: SecurityHeaderOptions) {
   for (const [name, value] of Object.entries(securityHeaders)) {
     headers.set(name, value);
+  }
+  headers.set("cache-control", options.cacheControl);
+  if (options.cacheControl.includes("no-store")) {
+    headers.set("expires", "0");
+    headers.set("pragma", "no-cache");
+  }
+  if (options.contentSecurityPolicy) {
+    headers.set("content-security-policy", options.contentSecurityPolicy);
   }
 }
